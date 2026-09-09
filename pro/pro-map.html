@@ -937,6 +937,10 @@
             <b style="color:${z.color};">${z.name}</b><br>
             💎 <b>${z.badge}</b><br>
             <span style="color:#555;">${z.desc}</span>
+            <div class="btn-row" style="margin-top:6px;">
+              <button class="btn-act" style="background:#2e7d32;" onclick="selectedLatLng={lat:${z.center[0]},lng:${z.center[1]}}; openModal('logModal');">💎 採集ログ</button>
+              <a href="../ai/ai-kantei.html?lat=${z.center[0].toFixed(5)}&lng=${z.center[1].toFixed(5)}" target="_blank" class="btn-act" style="background:#b84a39; text-decoration:none;">🔬 AI鑑定</a>
+            </div>
           </div>
         `;
         circle.bindPopup(popupContent);
