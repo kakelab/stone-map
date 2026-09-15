@@ -104,6 +104,9 @@
       display: flex;
       gap: 4px;
     }
+    @media (max-width: 480px) {
+      .ver-badge-top { display: none; }
+    }
     .action-fab {
       background: #ffffff;
       color: #333;
@@ -292,7 +295,7 @@
 
   <!-- 右上: バージョン表示・履歴・全画面 ＆ 設定メニュー -->
   <div class="top-right-bar">
-    <span style="background:rgba(255,255,255,0.9); color:#555; font-size:9.5px; font-weight:bold; padding:3px 6px; border-radius:5px; align-self:center;">Ver 1.1</span>
+    <span class="ver-badge-top" style="background:rgba(255,255,255,0.9); color:#555; font-size:9.5px; font-weight:bold; padding:3px 6px; border-radius:5px; align-self:center;">Ver 1.1</span>
     <button class="action-fab" onclick="openModal('changelogModal')">📜 履歴</button>
     <button class="action-fab" onclick="toggleFullScreen()">⛶ 全画面</button>
     <button class="action-fab" onclick="openModal('toolsModal')">⚙️ 設定</button>
