@@ -295,7 +295,7 @@
 
   <!-- 右上: バージョン表示・履歴・全画面 ＆ 設定メニュー -->
   <div class="top-right-bar">
-    <span class="ver-badge-top" style="background:rgba(255,255,255,0.9); color:#555; font-size:9.5px; font-weight:bold; padding:3px 6px; border-radius:5px; align-self:center;">Ver 1.1</span>
+    <span class="ver-badge-top" style="background:rgba(255,255,255,0.9); color:#555; font-size:9.5px; font-weight:bold; padding:3px 6px; border-radius:5px; align-self:center;">Ver 1.2</span>
     <button class="action-fab" onclick="openModal('changelogModal')">📜 履歴</button>
     <button class="action-fab" onclick="toggleFullScreen()">⛶ 全画面</button>
     <button class="action-fab" onclick="openModal('toolsModal')">⚙️ 設定</button>
@@ -361,6 +361,13 @@
     <div class="modal-box">
       <h3>⚙️ 設定・ツール</h3>
       
+      <label><b>🔎 地名・川名検索</b></label>
+      <div style="display:flex; gap:5px; margin:4px 0 8px;">
+        <input id="mapPlaceSearch" type="text" placeholder="例: 久慈川、糸魚川" onkeypress="if(event.key==='Enter') searchMapLocation()" style="flex:1; min-width:0;">
+        <button class="btn-act" style="flex:0 0 auto; background:#455a64; padding:7px 10px;" onclick="searchMapLocation()">移動</button>
+      </div>
+      <div id="mapSearchStatus" style="font-size:9.5px; color:#607d8b; margin-bottom:8px;"></div>
+
       <label><b>🗺️ 地図レイヤー</b></label>
       <select id="baseMapSelect" style="margin-bottom:6px;">
         <option value="photo">航空写真（川原・足場）</option>
@@ -370,13 +377,16 @@
         <option value="std">標準地図</option>
       </select>
 
-      <label><b>地質図の濃さ: <span id="opacityVal">65%</span></b></label>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin:4px 0;">
+        <label style="margin:0;"><b>地質図の濃さ: <span id="opacityVal">65%</span></b></label>
+        <label style="font-size:10px; white-space:nowrap;"><input id="geologyToggle" type="checkbox" checked> 地質図表示</label>
+      </div>
       <input id="opacitySlider" type="range" min="0" max="1" step="0.05" value="0.65">
 
       <div class="menu-grid">
         <div id="wakeLockBtn" class="menu-item" onclick="toggleWakeLock()">💡 スリープ防止: OFF</div>
         <div id="trackBtn" class="menu-item">🐾 軌跡記録: OFF</div>
-        <div class="menu-item" onclick="openModal('diagModal')">🔍 拾った石鑑定</div>
+        <div class="menu-item" onclick="openModal('diagModal')">🧪 現場3分チェック</div>
         <div class="menu-item" onclick="openModal('radarModal')">⛈️ 雨雲・河川</div>
         <div class="menu-item" onclick="openModal('dataModal')">💾 ログ管理・写真</div>
         <div class="menu-item" onclick="openModal('infoModal')">ℹ️ 出典・マナー</div>
@@ -398,6 +408,16 @@
     <div class="modal-box">
       <h3>📜 石拾い地質マップ 更新履歴</h3>
       <div style="font-size:11.5px; line-height:1.6; color:#333; max-height:50vh; overflow-y:auto;">
+        <div style="margin-bottom:10px;">
+          <b style="color:#1565c0;">🗺️ Ver 1.2（2026.09）</b>
+          <ul style="margin:4px 0 0; padding-left:18px;">
+            <li>地名・河川名検索を追加し、事前調査で目的地へ直接移動可能に</li>
+            <li>地質図の表示ON/OFFと地図レイヤー選択を端末に記憶</li>
+            <li>簡易鑑定を「現場3分チェック」として役割を明確化</li>
+            <li>Free / Pro / AI鑑定局の採集ログを共通標本データとして同期</li>
+            <li>ログ表示の文字列を安全に処理し、未選択地点での保存位置も改善</li>
+          </ul>
+        </div>
         <div style="margin-bottom:10px;">
           <b style="color:#1565c0;">🗺️ Ver 1.1（2026.09）</b>
           <ul style="margin:4px 0 0; padding-left:18px;">
@@ -442,7 +462,7 @@
   <!-- モーダル: 鑑定 -->
   <div class="modal-overlay" id="diagModal">
     <div class="modal-box">
-      <h3 style="color:#6a1b9a;">🔍 拾った石の簡易チェッカー</h3>
+      <h3 style="color:#6a1b9a;">🧪 現場3分チェック（簡易判定）</h3>
       <label><b>① 透明感</b></label>
       <select id="diagTrans">
         <option value="high">光をよく透す（透明・半透明）</option>
@@ -479,7 +499,7 @@
   <!-- モーダル: データ管理 -->
   <div class="modal-overlay" id="dataModal">
     <div class="modal-box">
-      <h3 style="color:#1565c0;">💾 データ管理・写真一括配置</h3>
+      <h3 style="color:#1565c0;">💾 共通標本ログ・写真一括配置</h3>
       <div style="background:#e3f2fd; padding:8px; border-radius:6px; margin-bottom:8px;">
         <b>📸 写真から一括ピン立て</b>
         <div style="font-size:10px; color:#555; margin-bottom:4px;">位置情報付き写真を選ぶだけで自動配置！</div>
@@ -538,6 +558,41 @@
       }
     }
 
+    // 共通標本ログ（Free / Pro / AI鑑定局で共有、旧キーから自動移行）
+    const KAKELAB_LOG_KEY = 'kakelab_specimens_v2';
+    function logSignature(item) {
+      return [Number(item.lat).toFixed(5), Number(item.lng).toFixed(5), item.name || '', item.date || '', item.memo || ''].join('|');
+    }
+    function mergeUniqueLogs(...groups) {
+      const seen = new Set(), out = [];
+      groups.flat().forEach(item => {
+        if (!item || !Number.isFinite(Number(item.lat)) || !Number.isFinite(Number(item.lng))) return;
+        const normalized = { ...item, lat:Number(item.lat), lng:Number(item.lng) };
+        const sig = logSignature(normalized);
+        if (!seen.has(sig)) { seen.add(sig); out.push(normalized); }
+      });
+      return out;
+    }
+    const KAKELAB_MIGRATION_KEY = 'kakelab_specimens_v2_migrated';
+    function getSpecimenLogs() {
+      let common = JSON.parse(localStorage.getItem(KAKELAB_LOG_KEY) || '[]');
+      if (!localStorage.getItem(KAKELAB_MIGRATION_KEY) || !localStorage.getItem(KAKELAB_LOG_KEY)) {
+        const free = JSON.parse(localStorage.getItem('stone_logs') || '[]');
+        const pro = JSON.parse(localStorage.getItem('stone_logs_pro') || '[]');
+        common = mergeUniqueLogs(common, free, pro);
+        localStorage.setItem(KAKELAB_LOG_KEY, JSON.stringify(common));
+        localStorage.setItem(KAKELAB_MIGRATION_KEY, '1');
+      }
+      return mergeUniqueLogs(common);
+    }
+    function setSpecimenLogs(logs) {
+      const clean = mergeUniqueLogs(logs);
+      localStorage.setItem(KAKELAB_LOG_KEY, JSON.stringify(clean));
+      localStorage.setItem(KAKELAB_MIGRATION_KEY, '1');
+    }
+    function makeSpecimenId() { return `kl-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`; }
+    function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch])); }
+
     // 2. IndexedDBキャッシュ
     const tileDB = localforage.createInstance({ name: 'stone_map_tiles' });
 
@@ -580,7 +635,15 @@
       attribution: '&copy; 産総研'
     });
 
-    const map = L.map('map', { zoomControl: false, layers: [baseLayers.photo, geologyLayer] }).setView([36.7, 138.5], 7);
+    const savedBaseKey = localStorage.getItem('kakelab_free_base') || 'photo';
+    const initialBaseKey = baseLayers[savedBaseKey] ? savedBaseKey : 'photo';
+    const initialGeologyVisible = localStorage.getItem('kakelab_free_geology') !== 'off';
+    const initialLayers = [baseLayers[initialBaseKey] || baseLayers.photo];
+    if (initialGeologyVisible) initialLayers.push(geologyLayer);
+    const map = L.map('map', { zoomControl: false, layers: initialLayers }).setView([36.7, 138.5], 7);
+
+    document.getElementById('baseMapSelect').value = initialBaseKey;
+    document.getElementById('geologyToggle').checked = initialGeologyVisible;
 
     function updateZoomDisplay() {
       document.getElementById('zoomText').innerText = `Lv.${map.getZoom()}`;
@@ -588,20 +651,46 @@
     map.on('zoomend', updateZoomDisplay);
     updateZoomDisplay();
 
-    let currentBase = baseLayers.photo;
-    let currentBaseKey = 'photo';
+    let currentBaseKey = initialBaseKey;
+    let currentBase = baseLayers[currentBaseKey] || baseLayers.photo;
     document.getElementById('baseMapSelect').addEventListener('change', (e) => {
       map.removeLayer(currentBase);
       currentBaseKey = e.target.value;
       currentBase = baseLayers[currentBaseKey];
       map.addLayer(currentBase);
       currentBase.bringToBack();
+      localStorage.setItem('kakelab_free_base', currentBaseKey);
+    });
+
+    document.getElementById('geologyToggle').addEventListener('change', (e) => {
+      if (e.target.checked) {
+        if (!map.hasLayer(geologyLayer)) geologyLayer.addTo(map);
+      } else if (map.hasLayer(geologyLayer)) map.removeLayer(geologyLayer);
+      localStorage.setItem('kakelab_free_geology', e.target.checked ? 'on' : 'off');
     });
 
     document.getElementById('opacitySlider').addEventListener('input', (e) => {
       geologyLayer.setOpacity(e.target.value);
       document.getElementById('opacityVal').innerText = Math.round(e.target.value * 100) + '%';
     });
+
+    async function searchMapLocation() {
+      const input = document.getElementById('mapPlaceSearch');
+      const status = document.getElementById('mapSearchStatus');
+      const q = input.value.trim();
+      if (!q) return;
+      status.innerText = '🔎 検索中...';
+      try {
+        const res = await fetch(`https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(q)}`);
+        const data = res.ok ? await res.json() : [];
+        if (!data?.length) { status.innerText = '見つかりませんでした。地名を短くして再検索してください。'; return; }
+        const [lng, lat] = data[0].geometry.coordinates;
+        const title = data[0]?.properties?.title || q;
+        map.setView([lat, lng], 14);
+        status.innerText = `📍 ${title} へ移動しました`;
+        closeModal('toolsModal');
+      } catch (e) { status.innerText = '検索に失敗しました。通信状態を確認してください。'; }
+    }
 
     // 3. ボトムシート
     function toggleBottomSheet() {
@@ -696,7 +785,7 @@
     function batchImportPhotos(e) {
       const files = e.target.files;
       if (!files || files.length === 0) return;
-      const logs = JSON.parse(localStorage.getItem('stone_logs') || '[]');
+      const logs = getSpecimenLogs();
 
       Array.from(files).forEach(file => {
         EXIF.getData(file, function() {
@@ -724,6 +813,8 @@
                 canvas.getContext('2d').drawImage(img, 0, 0, w, h);
 
                 logs.push({
+                  id: makeSpecimenId(),
+                  source: 'free-map-exif',
                   lat: latDec,
                   lng: lngDec,
                   name: file.name.replace(/\.[^/.]+$/, "") || '写真ログ',
@@ -731,7 +822,7 @@
                   date: dateStr,
                   photo: canvas.toDataURL('image/jpeg', 0.7)
                 });
-                localStorage.setItem('stone_logs', JSON.stringify(logs));
+                setSpecimenLogs(logs);
                 loadLogs();
               };
               img.src = ev.target.result;
@@ -831,16 +922,16 @@
 
     function loadLogs() {
       logLayer.clearLayers();
-      const logs = JSON.parse(localStorage.getItem('stone_logs') || '[]');
+      const logs = getSpecimenLogs();
       logs.forEach((item, index) => {
         L.marker([item.lat, item.lng], {
           icon: L.divIcon({ html: '<div style="font-size:20px; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.4));">💎</div>', iconSize: [24, 24], iconAnchor: [12, 12] })
         }).addTo(logLayer).bindPopup(`
           <div style="min-width:180px; font-size:11.5px;">
-            <h4 style="margin:0 0 4px; color:#2e7d32;">💎 ${item.name}</h4>
+            <h4 style="margin:0 0 4px; color:#2e7d32;">💎 ${escapeHtml(item.name)}</h4>
             <div style="font-size:9.5px; color:#888;">📅 ${item.date} | 📍 ${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}</div>
             ${item.photo ? `<img src="${item.photo}" style="width:100%; border-radius:6px; margin:4px 0; max-height:130px; object-fit:cover;">` : ''}
-            <div>${item.memo}</div>
+            <div>${escapeHtml(item.memo || '')}</div>
             <div class="btn-row">
               <button style="background:#d32f2f; color:white; border:none; padding:4px 6px; border-radius:4px; font-size:9.5px; cursor:pointer;" onclick="deleteLog(${index})">削除</button>
             </div>
@@ -881,7 +972,8 @@
       const memo = document.getElementById('logMemo').value || '';
       const file = document.getElementById('logPhoto').files[0];
       const now = new Date().toLocaleDateString('ja-JP');
-      const targetCoords = detectedExifLatLng || selectedLatLng || { lat: 36.7, lng: 138.5 };
+      const center = map.getCenter();
+      const targetCoords = detectedExifLatLng || selectedLatLng || { lat: center.lat, lng: center.lng };
 
       if (file) {
         const reader = new FileReader();
@@ -904,9 +996,9 @@
     }
 
     function saveToStorage(coords, name, memo, date, photo) {
-      const logs = JSON.parse(localStorage.getItem('stone_logs') || '[]');
-      logs.push({ lat: coords.lat, lng: coords.lng, name, memo, date, photo });
-      localStorage.setItem('stone_logs', JSON.stringify(logs));
+      const logs = getSpecimenLogs();
+      logs.push({ id: makeSpecimenId(), source:'free-map', lat: coords.lat, lng: coords.lng, name, memo, date, photo, updatedAt:new Date().toISOString() });
+      setSpecimenLogs(logs);
       closeModal('logModal');
       if (tempMarker) map.removeLayer(tempMarker);
       loadLogs();
@@ -914,9 +1006,9 @@
 
     window.deleteLog = function(i) {
       if (!confirm('このログを削除しますか？')) return;
-      const logs = JSON.parse(localStorage.getItem('stone_logs') || '[]');
+      const logs = getSpecimenLogs();
       logs.splice(i, 1);
-      localStorage.setItem('stone_logs', JSON.stringify(logs));
+      setSpecimenLogs(logs);
       map.closePopup();
       loadLogs();
     };
@@ -949,7 +1041,7 @@
 
     // 11. バックアップ
     function exportLogs() {
-      const logs = localStorage.getItem('stone_logs') || '[]';
+      const logs = JSON.stringify(getSpecimenLogs());
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([logs], { type: 'application/json' }));
       a.download = `stone_backup_${new Date().toISOString().slice(0,10)}.json`;
@@ -964,8 +1056,8 @@
         try {
           const imp = JSON.parse(ev.target.result);
           if (Array.isArray(imp)) {
-            const cur = JSON.parse(localStorage.getItem('stone_logs') || '[]');
-            localStorage.setItem('stone_logs', JSON.stringify([...cur, ...imp]));
+            const cur = getSpecimenLogs();
+            setSpecimenLogs([...cur, ...imp]);
             alert(`復元完了！ ${imp.length} 件を追加しました。`);
             loadLogs();
             closeModal('dataModal');
