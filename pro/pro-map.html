@@ -352,6 +352,51 @@
       margin-top: 2px;
       line-height: 1.35;
     }
+    .spot-controls {
+      display: grid;
+      grid-template-columns: 1fr 118px;
+      gap: 6px;
+      margin: 6px 0;
+    }
+    .spot-controls input, .spot-controls select {
+      min-width: 0;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 6px 8px;
+      border: 1px solid #d5d5d5;
+      border-radius: 7px;
+      background: #fff;
+      font-size: 10.5px;
+    }
+    .spot-action-row {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      margin-bottom: 7px;
+      flex-wrap: wrap;
+    }
+    .spot-mini-btn {
+      border: 1px solid #d5d5d5;
+      background: #fff;
+      color: #455a64;
+      border-radius: 12px;
+      padding: 4px 7px;
+      font-size: 9.5px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .spot-mini-btn.active { background:#fff8e1; border-color:#ffb300; color:#e65100; }
+    .spot-result-count { margin-left:auto; font-size:9.5px; color:#777; }
+    .spot-fav-btn {
+      border: none;
+      background: transparent;
+      font-size: 17px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 1px 4px;
+      flex: 0 0 auto;
+    }
+    .spot-distance { font-size:9px; color:#1976d2; margin-top:3px; }
 
     .gallery-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
     .gallery-card { border: 1px solid #eee; border-radius: 8px; overflow: hidden; background: #fafafa; cursor: pointer; }
@@ -392,7 +437,7 @@
 
   <!-- 右上: バージョン表示・履歴・全画面 ＆ 設定メニュー -->
   <div class="top-right-bar">
-    <span class="ver-badge-top" style="background:rgba(255,255,255,0.9); color:#555; font-size:9.5px; font-weight:bold; padding:3px 6px; border-radius:5px; align-self:center;">Ver 1.1</span>
+    <span class="ver-badge-top" style="background:rgba(255,255,255,0.9); color:#555; font-size:9.5px; font-weight:bold; padding:3px 6px; border-radius:5px; align-self:center;">Ver 1.2</span>
     <button class="action-fab" onclick="openModal('changelogModal')">📜 履歴</button>
     <button class="action-fab" onclick="toggleFullScreen()">⛶ 全画面</button>
     <button class="action-fab" onclick="openModal('toolsModal')">
@@ -508,6 +553,21 @@
         <button class="spot-cat-btn" data-cat="predict" onclick="filterProSpots('predict', this)">🎯 予想のみ</button>
       </div>
 
+      <div class="spot-controls">
+        <input id="spotSearchInput" type="search" placeholder="地名・鉱物・説明を検索" oninput="renderProSpotList()">
+        <select id="spotSortSelect" onchange="renderProSpotList()">
+          <option value="data">登録順</option>
+          <option value="distance">近い順</option>
+          <option value="name">名前順</option>
+        </select>
+      </div>
+      <div class="spot-action-row">
+        <button class="spot-mini-btn" onclick="useCurrentLocationForSpots()">📍 現在地基準</button>
+        <button id="spotFavOnlyBtn" class="spot-mini-btn" onclick="toggleFavoriteOnly()">☆ お気に入りのみ</button>
+        <span id="spotResultCount" class="spot-result-count"></span>
+      </div>
+      <div style="font-size:9.2px; color:#777; line-height:1.4; margin-bottom:6px;">🎯予想地点は地質条件からの探索候補です。立入可否・採取ルール・現地状況を必ず確認してください。</div>
+
       <div id="proSpotListContainer"></div>
 
       <div class="btn-row" style="margin-top:10px;">
@@ -521,6 +581,13 @@
     <div class="modal-box">
       <h3>⚙️ Pro版 設定・ツール</h3>
       
+      <label><b>🔎 地名・川名検索</b></label>
+      <div style="display:flex; gap:5px; margin:4px 0 8px;">
+        <input id="mapPlaceSearch" type="text" placeholder="例: 久慈川、糸魚川" onkeypress="if(event.key==='Enter') searchMapLocation()" style="flex:1; min-width:0;">
+        <button class="btn-act" style="flex:0 0 auto; background:#455a64; padding:7px 10px;" onclick="searchMapLocation()">移動</button>
+      </div>
+      <div id="mapSearchStatus" style="font-size:9.5px; color:#607d8b; margin-bottom:8px;"></div>
+
       <label><b>🗺️ 地図レイヤー</b></label>
       <select id="baseMapSelect" style="margin-bottom:6px;">
         <option value="photo">航空写真（川原・足場）</option>
@@ -530,7 +597,10 @@
         <option value="std">標準地図</option>
       </select>
 
-      <label><b>地質図の濃さ: <span id="opacityVal">65%</span></b></label>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin:4px 0;">
+        <label style="margin:0;"><b>地質図の濃さ: <span id="opacityVal">65%</span></b></label>
+        <label style="font-size:10px; white-space:nowrap;"><input id="geologyToggle" type="checkbox" checked> 地質図表示</label>
+      </div>
       <input id="opacitySlider" type="range" min="0" max="1" step="0.05" value="0.65">
 
       <div class="menu-grid">
@@ -541,7 +611,7 @@
         <div id="privacyBtn" class="menu-item" onclick="togglePrivacy()">🔒 共有保護: OFF</div>
         <div id="measureBtn" class="menu-item" onclick="toggleMeasure()">📏 距離計測: OFF</div>
         <div class="menu-item" onclick="openModal('galleryModal')">📖 お宝図鑑</div>
-        <div class="menu-item" onclick="openModal('diagModal')">🔍 拾った石鑑定</div>
+        <div class="menu-item" onclick="openModal('diagModal')">🧪 現場3分チェック</div>
         <div class="menu-item" onclick="openModal('radarModal')">⛈️ 雨雲・河川</div>
         <div class="menu-item" onclick="openModal('dataModal')">💾 ログ管理・写真</div>
       </div>
@@ -563,6 +633,16 @@
     <div class="modal-box">
       <h3>📜 石拾い地質マップ【Pro版】更新履歴</h3>
       <div style="font-size:11.5px; line-height:1.6; color:#333; max-height:50vh; overflow-y:auto;">
+        <div style="margin-bottom:10px;">
+          <b style="color:#1565c0;">🗺️ Ver 1.2（2026.09）</b>
+          <ul style="margin:4px 0 0; padding-left:18px;">
+            <li>全国100選に検索・近い順・お気に入り絞り込みを追加</li>
+            <li>現在地を基準に近い採集候補を探せるよう改善</li>
+            <li>地名・河川名検索、地質図表示ON/OFF、レイヤー設定記憶を追加</li>
+            <li>簡易鑑定を「現場3分チェック」として役割を明確化</li>
+            <li>Free / Pro / AI鑑定局の採集ログを共通標本データとして同期</li>
+          </ul>
+        </div>
         <div style="margin-bottom:10px;">
           <b style="color:#1565c0;">🗺️ Ver 1.1（2026.09）</b>
           <ul style="margin:4px 0 0; padding-left:18px;">
@@ -618,7 +698,7 @@
   <!-- モーダル: 鑑定 -->
   <div class="modal-overlay" id="diagModal">
     <div class="modal-box">
-      <h3 style="color:#6a1b9a;">🔍 拾った石の簡易チェッカー</h3>
+      <h3 style="color:#6a1b9a;">🧪 現場3分チェック（簡易判定）</h3>
       <label><b>① 透明感</b></label>
       <select id="diagTrans">
         <option value="high">光をよく透す（透明・半透明）</option>
@@ -655,7 +735,7 @@
   <!-- モーダル: データ管理（無料版ログ移行対応） -->
   <div class="modal-overlay" id="dataModal">
     <div class="modal-box">
-      <h3 style="color:#1565c0;">💾 データ管理・写真一括配置</h3>
+      <h3 style="color:#1565c0;">💾 共通標本ログ・写真一括配置</h3>
       
       <!-- 無料版ログ引き継ぎボタン -->
       <div style="background:#fff8e1; border:1px solid #ffd54f; padding:8px; border-radius:6px; margin-bottom:8px;">
@@ -742,6 +822,41 @@
       }
     }
 
+    // 共通標本ログ（Free / Pro / AI鑑定局で共有、旧キーから自動移行）
+    const KAKELAB_LOG_KEY = 'kakelab_specimens_v2';
+    function logSignature(item) {
+      return [Number(item.lat).toFixed(5), Number(item.lng).toFixed(5), item.name || '', item.date || '', item.memo || ''].join('|');
+    }
+    function mergeUniqueLogs(...groups) {
+      const seen = new Set(), out = [];
+      groups.flat().forEach(item => {
+        if (!item || !Number.isFinite(Number(item.lat)) || !Number.isFinite(Number(item.lng))) return;
+        const normalized = { ...item, lat:Number(item.lat), lng:Number(item.lng) };
+        const sig = logSignature(normalized);
+        if (!seen.has(sig)) { seen.add(sig); out.push(normalized); }
+      });
+      return out;
+    }
+    const KAKELAB_MIGRATION_KEY = 'kakelab_specimens_v2_migrated';
+    function getSpecimenLogs() {
+      let common = JSON.parse(localStorage.getItem(KAKELAB_LOG_KEY) || '[]');
+      if (!localStorage.getItem(KAKELAB_MIGRATION_KEY) || !localStorage.getItem(KAKELAB_LOG_KEY)) {
+        const free = JSON.parse(localStorage.getItem('stone_logs') || '[]');
+        const pro = JSON.parse(localStorage.getItem('stone_logs_pro') || '[]');
+        common = mergeUniqueLogs(common, free, pro);
+        localStorage.setItem(KAKELAB_LOG_KEY, JSON.stringify(common));
+        localStorage.setItem(KAKELAB_MIGRATION_KEY, '1');
+      }
+      return mergeUniqueLogs(common);
+    }
+    function setSpecimenLogs(logs) {
+      const clean = mergeUniqueLogs(logs);
+      localStorage.setItem(KAKELAB_LOG_KEY, JSON.stringify(clean));
+      localStorage.setItem(KAKELAB_MIGRATION_KEY, '1');
+    }
+    function makeSpecimenId() { return `kl-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`; }
+    function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch])); }
+
     // 2. IndexedDBキャッシュ
     const tileDB = localforage.createInstance({ name: 'stone_map_pro_tiles' });
 
@@ -784,7 +899,14 @@
       attribution: '&copy; 産総研'
     });
 
-    const map = L.map('map', { zoomControl: false, layers: [baseLayers.photo, geologyLayer] }).setView([36.7, 138.5], 7);
+    const savedBaseKey = localStorage.getItem('kakelab_pro_base') || 'photo';
+    const initialBaseKey = baseLayers[savedBaseKey] ? savedBaseKey : 'photo';
+    const initialGeologyVisible = localStorage.getItem('kakelab_pro_geology') !== 'off';
+    const initialLayers = [baseLayers[initialBaseKey] || baseLayers.photo];
+    if (initialGeologyVisible) initialLayers.push(geologyLayer);
+    const map = L.map('map', { zoomControl: false, layers: initialLayers }).setView([36.7, 138.5], 7);
+    document.getElementById('baseMapSelect').value = initialBaseKey;
+    document.getElementById('geologyToggle').checked = initialGeologyVisible;
 
     function updateZoomDisplay() {
       document.getElementById('zoomText').innerText = `Lv.${map.getZoom()}`;
@@ -792,20 +914,45 @@
     map.on('zoomend', updateZoomDisplay);
     updateZoomDisplay();
 
-    let currentBase = baseLayers.photo;
-    let currentBaseKey = 'photo';
+    let currentBaseKey = initialBaseKey;
+    let currentBase = baseLayers[currentBaseKey] || baseLayers.photo;
     document.getElementById('baseMapSelect').addEventListener('change', (e) => {
       map.removeLayer(currentBase);
       currentBaseKey = e.target.value;
       currentBase = baseLayers[currentBaseKey];
       map.addLayer(currentBase);
       currentBase.bringToBack();
+      localStorage.setItem('kakelab_pro_base', currentBaseKey);
+    });
+    document.getElementById('geologyToggle').addEventListener('change', (e) => {
+      if (e.target.checked) {
+        if (!map.hasLayer(geologyLayer)) geologyLayer.addTo(map);
+      } else if (map.hasLayer(geologyLayer)) map.removeLayer(geologyLayer);
+      localStorage.setItem('kakelab_pro_geology', e.target.checked ? 'on' : 'off');
     });
 
     document.getElementById('opacitySlider').addEventListener('input', (e) => {
       geologyLayer.setOpacity(e.target.value);
       document.getElementById('opacityVal').innerText = Math.round(e.target.value * 100) + '%';
     });
+
+    async function searchMapLocation() {
+      const input = document.getElementById('mapPlaceSearch');
+      const status = document.getElementById('mapSearchStatus');
+      const q = input.value.trim();
+      if (!q) return;
+      status.innerText = '🔎 検索中...';
+      try {
+        const res = await fetch(`https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(q)}`);
+        const data = res.ok ? await res.json() : [];
+        if (!data?.length) { status.innerText = '見つかりませんでした。地名を短くして再検索してください。'; return; }
+        const [lng, lat] = data[0].geometry.coordinates;
+        const title = data[0]?.properties?.title || q;
+        map.setView([lat, lng], 14);
+        status.innerText = `📍 ${title} へ移動しました`;
+        closeModal('toolsModal');
+      } catch (e) { status.innerText = '検索に失敗しました。通信状態を確認してください。'; }
+    }
 
     // 3. 全国100大ホットスポットデータ
     const hotzonesData = [
@@ -996,34 +1143,90 @@
 
     // 鉱物別フィルター＆リスト生成
     let currentSpotFilter = 'all';
+    let spotFavoriteOnly = false;
+    let spotDistanceOrigin = null;
+    const SPOT_FAV_KEY = 'kakelab_pro_spot_favorites';
+
+    function getSpotFavorites() {
+      try { return new Set(JSON.parse(localStorage.getItem(SPOT_FAV_KEY) || '[]')); }
+      catch (e) { return new Set(); }
+    }
+    function saveSpotFavorites(set) { localStorage.setItem(SPOT_FAV_KEY, JSON.stringify([...set])); }
+    function toggleSpotFavorite(id) {
+      const fav = getSpotFavorites();
+      if (fav.has(id)) fav.delete(id); else fav.add(id);
+      saveSpotFavorites(fav);
+      renderProSpotList();
+    }
+    function toggleFavoriteOnly() {
+      spotFavoriteOnly = !spotFavoriteOnly;
+      const btn = document.getElementById('spotFavOnlyBtn');
+      btn.classList.toggle('active', spotFavoriteOnly);
+      btn.innerText = spotFavoriteOnly ? '⭐ お気に入りのみ' : '☆ お気に入りのみ';
+      renderProSpotList();
+    }
+    function haversineKm(a, b) {
+      const R = 6371;
+      const toRad = d => d * Math.PI / 180;
+      const dLat = toRad(b[0] - a[0]), dLng = toRad(b[1] - a[1]);
+      const lat1 = toRad(a[0]), lat2 = toRad(b[0]);
+      const h = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
+      return 2 * R * Math.asin(Math.sqrt(h));
+    }
     function filterProSpots(cat, btnElem) {
       currentSpotFilter = cat;
       document.querySelectorAll('#spotCategoryTabs .spot-cat-btn').forEach(b => b.classList.remove('active'));
       if (btnElem) btnElem.classList.add('active');
-
+      renderProSpotList();
+    }
+    function useCurrentLocationForSpots() {
+      if (!navigator.geolocation) return alert('GPSが非対応です');
+      navigator.geolocation.getCurrentPosition(pos => {
+        spotDistanceOrigin = [pos.coords.latitude, pos.coords.longitude];
+        map.setView(spotDistanceOrigin, Math.max(map.getZoom(), 11));
+        document.getElementById('spotSortSelect').value = 'distance';
+        renderProSpotList();
+      }, err => alert('現在地の取得に失敗しました: ' + err.message), { enableHighAccuracy:true, timeout:10000, maximumAge:30000 });
+    }
+    function renderProSpotList() {
       const container = document.getElementById('proSpotListContainer');
+      if (!container) return;
       container.innerHTML = '';
+      const fav = getSpotFavorites();
+      const q = (document.getElementById('spotSearchInput')?.value || '').trim().toLowerCase();
+      const sort = document.getElementById('spotSortSelect')?.value || 'data';
+      const mapCenter = map.getCenter();
+      const origin = spotDistanceOrigin || [mapCenter.lat, mapCenter.lng];
 
-      const filtered = hotzonesData.filter(z => {
-        if (cat === 'all') return true;
-        if (cat === 'predict') return z.predict === true;
-        return z.category === cat;
-      });
+      let filtered = hotzonesData.filter(z => {
+        const catOk = currentSpotFilter === 'all' ? true : currentSpotFilter === 'predict' ? z.predict === true : z.category === currentSpotFilter;
+        const favOk = !spotFavoriteOnly || fav.has(z.id);
+        const qOk = !q || `${z.name} ${z.badge} ${z.desc}`.toLowerCase().includes(q);
+        return catOk && favOk && qOk;
+      }).map(z => ({ ...z, _distance: haversineKm(origin, z.center) }));
 
+      if (sort === 'distance') filtered.sort((a,b) => a._distance - b._distance);
+      if (sort === 'name') filtered.sort((a,b) => a.name.localeCompare(b.name, 'ja'));
+
+      const count = document.getElementById('spotResultCount');
+      if (count) count.innerText = `${filtered.length}件表示`;
       if (filtered.length === 0) {
-        container.innerHTML = '<div style="text-align:center; padding:15px; color:#888;">該当するスポットがありません。</div>';
+        container.innerHTML = '<div style="text-align:center; padding:15px; color:#888;">条件に合うスポットがありません。</div>';
         return;
       }
 
       filtered.forEach(z => {
         const card = document.createElement('div');
         card.className = 'pro-spot-card';
+        const isFav = fav.has(z.id);
         card.innerHTML = `
           <div class="pro-spot-title">
             <span>${z.name}</span>
-            <span style="font-size:9px; color:${z.color};">${z.badge}</span>
+            <button class="spot-fav-btn" title="お気に入り" onclick="event.stopPropagation(); toggleSpotFavorite('${z.id}')">${isFav ? '⭐' : '☆'}</button>
           </div>
+          <div style="font-size:9px; color:${z.color}; font-weight:bold; margin-top:2px;">${z.badge}</div>
           <div class="pro-spot-desc">${z.desc}</div>
+          <div class="spot-distance">📏 基準地点から約 ${z._distance < 10 ? z._distance.toFixed(1) : Math.round(z._distance)} km</div>
         `;
         card.onclick = () => {
           closeModal('proSpotsModal');
@@ -1033,7 +1236,7 @@
       });
     }
     updateCategoryTabCounts();
-    filterProSpots('all', null);
+    renderProSpotList();
 
     let hotzonesVisible = true;
     function toggleHotzones() {
@@ -1169,7 +1372,7 @@
     function batchImportPhotos(e) {
       const files = e.target.files;
       if (!files || files.length === 0) return;
-      const logs = JSON.parse(localStorage.getItem('stone_logs_pro') || '[]');
+      const logs = getSpecimenLogs();
 
       Array.from(files).forEach(file => {
         EXIF.getData(file, function() {
@@ -1197,6 +1400,8 @@
                 canvas.getContext('2d').drawImage(img, 0, 0, w, h);
 
                 logs.push({
+                  id: makeSpecimenId(),
+                  source: 'pro-map-exif',
                   lat: latDec,
                   lng: lngDec,
                   name: file.name.replace(/\.[^/.]+$/, "") || '写真ログ',
@@ -1204,7 +1409,7 @@
                   date: dateStr,
                   photo: canvas.toDataURL('image/jpeg', 0.7)
                 });
-                localStorage.setItem('stone_logs_pro', JSON.stringify(logs));
+                setSpecimenLogs(logs);
                 loadLogs();
               };
               img.src = ev.target.result;
@@ -1366,16 +1571,16 @@
 
     function loadLogs() {
       logLayer.clearLayers();
-      const logs = JSON.parse(localStorage.getItem('stone_logs_pro') || '[]');
+      const logs = getSpecimenLogs();
       logs.forEach((item, index) => {
         L.marker([item.lat, item.lng], {
           icon: L.divIcon({ html: '<div style="font-size:20px; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.4));">💎</div>', iconSize: [24, 24], iconAnchor: [12, 12] })
         }).addTo(logLayer).bindPopup(`
           <div style="min-width:190px; font-size:11.5px;">
-            <h4 style="margin:0 0 4px; color:#2e7d32;">💎 ${item.name}</h4>
+            <h4 style="margin:0 0 4px; color:#2e7d32;">💎 ${escapeHtml(item.name)}</h4>
             <div style="font-size:9.5px; color:#888;">📅 ${item.date} | 📍 ${formatCoord(item.lat)}, ${formatCoord(item.lng)}</div>
             ${item.photo ? `<img src="${item.photo}" style="width:100%; border-radius:6px; margin:4px 0; max-height:130px; object-fit:cover;">` : ''}
-            <div>${item.memo}</div>
+            <div>${escapeHtml(item.memo || '')}</div>
             <div class="btn-row">
               <button style="background:#e65100; color:white; border:none; padding:4px 6px; border-radius:4px; font-size:9.5px; cursor:pointer;" onclick="openCardThemeModal(${index})">🎴 トレカ</button>
               <button style="background:#d32f2f; color:white; border:none; padding:4px 6px; border-radius:4px; font-size:9.5px; cursor:pointer;" onclick="deleteLog(${index})">削除</button>
@@ -1385,36 +1590,23 @@
       });
     }
 
-    // 無料版ログの自動検知＆インポート
+    // 旧Free / Proキーは起動時に共通標本ログへ自動統合
     function checkFreeVersionLogs() {
-      const proLogs = localStorage.getItem('stone_logs_pro');
-      const freeLogs = localStorage.getItem('stone_logs');
-      if (!proLogs && freeLogs) {
-        try {
-          const parsed = JSON.parse(freeLogs);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            if (confirm(`【Pro版へようこそ！】\n無料版で作成した採集ログ（${parsed.length}件）が見つかりました。\nPro版にそのまま引き継ぎますか？`)) {
-              localStorage.setItem('stone_logs_pro', freeLogs);
-              loadLogs();
-              alert(`引き継ぎ完了！ ${parsed.length}件のログをPro版に移行しました。`);
-            }
-          }
-        } catch(e) {}
-      }
+      const merged = getSpecimenLogs();
+      setSpecimenLogs(merged);
     }
 
     function importFromFreeVersion() {
-      const freeLogs = localStorage.getItem('stone_logs');
-      if (!freeLogs) return alert('無料版のログが見つかりませんでした。');
+      const freeRaw = localStorage.getItem('stone_logs');
+      if (!freeRaw) return alert('無料版のログが見つかりませんでした。');
       try {
-        const parsed = JSON.parse(freeLogs);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const curPro = JSON.parse(localStorage.getItem('stone_logs_pro') || '[]');
-          localStorage.setItem('stone_logs_pro', JSON.stringify([...curPro, ...parsed]));
-          loadLogs();
-          alert(`無料版から ${parsed.length} 件のログをPro版に追加しました！`);
-          closeModal('dataModal');
-        } else { alert('無料版にログがありませんでした。'); }
+        const parsed = JSON.parse(freeRaw);
+        if (!Array.isArray(parsed) || parsed.length === 0) return alert('無料版にログがありませんでした。');
+        const merged = mergeUniqueLogs(getSpecimenLogs(), parsed);
+        setSpecimenLogs(merged);
+        loadLogs();
+        alert(`無料版ログを確認し、共通標本ログを ${merged.length} 件に同期しました。`);
+        closeModal('dataModal');
       } catch(e) { alert('読み込みに失敗しました。'); }
     }
 
@@ -1425,7 +1617,7 @@
 
     function renderAndDownloadCard() {
       const theme = document.getElementById('cardThemeSelect').value;
-      const logs = JSON.parse(localStorage.getItem('stone_logs_pro') || '[]');
+      const logs = getSpecimenLogs();
       const item = logs[currentCardIndex];
       if (!item) return;
 
@@ -1490,7 +1682,7 @@
     }
 
     function openGalleryModal() {
-      const logs = JSON.parse(localStorage.getItem('stone_logs_pro') || '[]');
+      const logs = getSpecimenLogs();
       const container = document.getElementById('galleryContainer');
       container.innerHTML = '';
       if (logs.length === 0) {
@@ -1550,7 +1742,8 @@
       const memo = document.getElementById('logMemo').value || '';
       const file = document.getElementById('logPhoto').files[0];
       const now = new Date().toLocaleDateString('ja-JP');
-      const targetCoords = detectedExifLatLng || selectedLatLng || { lat: 36.7, lng: 138.5 };
+      const center = map.getCenter();
+      const targetCoords = detectedExifLatLng || selectedLatLng || { lat:center.lat, lng:center.lng };
 
       if (file) {
         const reader = new FileReader();
@@ -1573,9 +1766,9 @@
     }
 
     function saveToStorage(coords, name, memo, date, photo) {
-      const logs = JSON.parse(localStorage.getItem('stone_logs_pro') || '[]');
-      logs.push({ lat: coords.lat, lng: coords.lng, name, memo, date, photo });
-      localStorage.setItem('stone_logs_pro', JSON.stringify(logs));
+      const logs = getSpecimenLogs();
+      logs.push({ id:makeSpecimenId(), source:'pro-map', lat:coords.lat, lng:coords.lng, name, memo, date, photo, updatedAt:new Date().toISOString() });
+      setSpecimenLogs(logs);
       closeModal('logModal');
       if (tempMarker) map.removeLayer(tempMarker);
       loadLogs();
@@ -1583,9 +1776,9 @@
 
     window.deleteLog = function(i) {
       if (!confirm('このログを削除しますか？')) return;
-      const logs = JSON.parse(localStorage.getItem('stone_logs_pro') || '[]');
+      const logs = getSpecimenLogs();
       logs.splice(i, 1);
-      localStorage.setItem('stone_logs_pro', JSON.stringify(logs));
+      setSpecimenLogs(logs);
       map.closePopup();
       loadLogs();
     };
@@ -1619,7 +1812,7 @@
 
     // 14. バックアップ
     function exportLogs() {
-      const logs = localStorage.getItem('stone_logs_pro') || '[]';
+      const logs = JSON.stringify(getSpecimenLogs());
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([logs], { type: 'application/json' }));
       a.download = `stone_pro_backup_${new Date().toISOString().slice(0,10)}.json`;
@@ -1634,8 +1827,8 @@
         try {
           const imp = JSON.parse(ev.target.result);
           if (Array.isArray(imp)) {
-            const cur = JSON.parse(localStorage.getItem('stone_logs_pro') || '[]');
-            localStorage.setItem('stone_logs_pro', JSON.stringify([...cur, ...imp]));
+            const cur = getSpecimenLogs();
+            setSpecimenLogs([...cur, ...imp]);
             alert(`復元完了！ ${imp.length} 件を追加しました。`);
             loadLogs();
             closeModal('dataModal');
