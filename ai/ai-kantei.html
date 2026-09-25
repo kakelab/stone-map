@@ -551,7 +551,7 @@
     <div class="header-box">
       <div class="header-top">
         <div class="badge-group">
-          <span class="ver-badge">Ver 1.1</span>
+          <span class="ver-badge">Ver 1.2</span>
           <button class="log-btn" onclick="openLogModal()">📜 更新履歴</button>
         </div>
         <span class="settings-link" onclick="toggleSettings()">⚙️ API設定</span>
@@ -564,7 +564,10 @@
     <div id="settingsBox" style="display:none; background:#eeeae0; padding:10px; border-radius:6px; margin-bottom:14px; border:1px solid #d5cec0;">
       <label style="font-size:10.5px; font-weight:bold; color:var(--navy); font-family:-apple-system,sans-serif;">Google Gemini API Key:</label>
       <input type="password" id="apiKeyInput" class="input-box" placeholder="AI Studioで取得したAPIキーを入力" style="margin-top:4px;" onchange="saveApiKey()">
-      <div style="font-size:9.5px; color:var(--text-muted); margin-top:3px; font-family:-apple-system,sans-serif;">※APIキーはお使いの端末（ブラウザ）にのみ安全に記憶されます。</div>
+      <div style="font-size:9.5px; color:var(--text-muted); margin-top:3px; line-height:1.45; font-family:-apple-system,sans-serif;">
+        ※APIキーはこのブラウザのlocalStorageに保存され、カケラボのサーバーには送信されません。<br>
+        ※写真・入力情報はGemini APIへ直接送信されます。Google側でのデータ取扱いは利用プラン・規約に従います。
+      </div>
     </div>
 
     <!-- ① 採取場所・地質コンテキスト -->
@@ -595,36 +598,36 @@
     <input type="text" id="geoInput" class="input-box" placeholder="地図指定・GPS・写真Exifから自動入力されます（手動編集も可）">
     <div id="geoStatusText" class="geo-status"></div>
 
-    <!-- ② 標本スロット（4アングル） -->
+    <!-- ② 標本スロット（1〜4枚・4アングル対応） -->
     <div class="section-title">
-      <span>📸 2. 標本写真（4アングル）</span>
+      <span>📸 2. 標本写真（1〜4枚・4アングル対応）</span>
       <span style="font-size:9.5px; color:var(--text-muted); font-weight:normal; font-family:-apple-system,sans-serif;">※写真①から位置情報を自動解析</span>
     </div>
     <div class="photo-grid">
       <div class="photo-slot" id="slot1">
-        <span class="photo-label">① 全体像<br>(乾いた状態/Exif)</span>
+        <span class="photo-label">① 全体像（推奨）<br>(乾いた状態/Exif)</span>
         <img id="img1">
         <input type="file" accept="image/*" onchange="previewImage(this, 1)">
       </div>
       <div class="photo-slot" id="slot2">
-        <span class="photo-label">② 割れ口・結晶<br>(マクロ接写)</span>
+        <span class="photo-label">② 割れ口・結晶（任意）<br>(マクロ接写)</span>
         <img id="img2">
         <input type="file" accept="image/*" onchange="previewImage(this, 2)">
       </div>
       <div class="photo-slot" id="slot3">
-        <span class="photo-label">③ 濡らし/透過<br>(水や下からの光)</span>
+        <span class="photo-label">③ 濡らし/透過（任意）<br>(水や下からの光)</span>
         <img id="img3">
         <input type="file" accept="image/*" onchange="previewImage(this, 3)">
       </div>
       <div class="photo-slot uv-slot" id="slot4">
-        <span class="photo-label" style="color:#8e24aa;">④ 🔦 UV蛍光<br>(365nmライト照射)</span>
+        <span class="photo-label" style="color:#8e24aa;">④ 🔦 UV蛍光（任意）<br>(365nmライト照射)</span>
         <img id="img4">
         <input type="file" accept="image/*" onchange="previewImage(this, 4)">
       </div>
     </div>
 
-    <!-- ③ 五感・物性データ -->
-    <div class="section-title">🧪 3. 現場での五感・物性チェック</div>
+    <!-- ③ 簡易物性・観察データ -->
+    <div class="section-title">🧪 3. 簡易物性・観察チェック</div>
     
     <div style="font-size:11px; font-weight:bold; color:#6a1b9a; margin:4px 0 2px; font-family:-apple-system,sans-serif;">🔦 UV（紫外線365nm）蛍光反応:</div>
     <div class="chip-group" id="uvChips">
@@ -672,15 +675,16 @@
     <div class="model-selector-bar">
       <span>🤖 推論鑑定AIモデル:</span>
       <select id="geminiModelSelect" onchange="saveSelectedModel()">
-        <option value="gemini-3.7-flash">Gemini 3.7 Flash（最新・最高解像度）</option>
-        <option value="gemini-3.6-flash" selected>Gemini 3.6 Flash（標準・安定）</option>
-        <option value="gemini-3.5-flash">Gemini 3.5 Flash（軽量・超高速）</option>
+        <option value="gemini-3.8-flash" selected>Gemini 3.8 Flash（最新・推奨）</option>
+        <option value="gemini-3.7-flash">Gemini 3.7 Flash（前世代・安定）</option>
+        <option value="gemini-3.6-flash">Gemini 3.6 Flash（旧世代・安定）</option>
+        <option value="gemini-3.5-flash">Gemini 3.5 Flash（旧世代・互換）</option>
       </select>
     </div>
 
     <button class="run-btn" id="runBtn" onclick="runAnalysis()">🔬 地質推論鑑定を実行する</button>
     <div style="font-size:9.5px; line-height:1.45; color:var(--text-muted); margin-top:6px; font-family:-apple-system,sans-serif;">
-      ※AI結果は写真と入力情報からの推定です。候補の確定には比重・硬度・条痕・酸反応などの追加確認を推奨します。
+      ※AI結果は写真と入力情報からの推定です。候補の確認には比重・硬度・条痕・ルーペ観察など、安全に行える追加確認を推奨します。薬品を使う検査は適切な知識・保護具のもとで行ってください。
     </div>
 
     <!-- 鑑定書レポート＆アクション -->
@@ -759,6 +763,17 @@
       </div>
 
       <div class="changelog-list">
+        <div class="changelog-item">
+          <div class="changelog-ver">🏛️ Ver 1.2 (2026.09) - Gemini 3.8・画像入力精度アップデート</div>
+          <ul style="margin:6px 0 0; padding-left:18px;">
+            <li>Gemini 3.8 Flash（GA）に対応し、新規利用時の推奨モデルに設定</li>
+            <li>標本写真が1枚から鑑定可能であることをUI上で明確化</li>
+            <li>各画像に「全体像・割れ口・濡れ/透過・UV」の役割ラベルを付けてAIへ送信</li>
+            <li>未アップロードの写真についてAIが所見を推測・捏造しないルールを追加</li>
+            <li>APIキー保存・Gemini APIへのデータ送信について説明をより正確な表現へ更新</li>
+            <li>追加確認の案内を比重・硬度・条痕・ルーペ観察など安全な方法優先に整理</li>
+          </ul>
+        </div>
         <div class="changelog-item">
           <div class="changelog-ver">🏛️ Ver 1.1 (2026.09) - 地図・推論品質アップデート</div>
           <ul style="margin:6px 0 0; padding-left:18px;">
@@ -869,7 +884,12 @@
       else toggleSettings();
 
       const savedModel = localStorage.getItem('gemini_selected_model');
-      if (savedModel) document.getElementById('geminiModelSelect').value = savedModel;
+      const modelSelect = document.getElementById('geminiModelSelect');
+      if (savedModel && Array.from(modelSelect.options).some(opt => opt.value === savedModel)) {
+        modelSelect.value = savedModel;
+      } else {
+        modelSelect.value = 'gemini-3.8-flash';
+      }
 
       const params = new URLSearchParams(window.location.search);
       const geo = params.get('geo');
@@ -1180,17 +1200,17 @@
       runBtn.disabled = true;
       runBtn.innerText = `🔬 [${selectedModel}] でAI地質推論中...`;
 
-      const env = document.querySelector('#envChips .chip-btn.active')?.innerText || '不明';
+      const env = document.querySelector('#envChips .chip-btn.active')?.innerText || '未指定';
       const geo = document.getElementById('geoInput').value || '未指定（全国標準）';
-      const uvReaction = document.querySelector('#uvChips .chip-btn.active')?.innerText || 'なし';
-      const hard = document.querySelector('#hardChips .chip-btn.active')?.innerText || '不明';
-      const texture = document.querySelector('#textureChips .chip-btn.active')?.innerText || '不明';
-      const weight = document.querySelector('#weightChips .chip-btn.active')?.innerText || '不明';
+      const uvReaction = document.querySelector('#uvChips .chip-btn.active')?.innerText || '未測定';
+      const hard = document.querySelector('#hardChips .chip-btn.active')?.innerText || '未測定';
+      const texture = document.querySelector('#textureChips .chip-btn.active')?.innerText || '未測定';
+      const weight = document.querySelector('#weightChips .chip-btn.active')?.innerText || '未測定';
       const isMagnetic = document.querySelector('#magnetChips .chip-btn.active')?.innerText || '未測定';
 
       const prompt = `
 あなたは鉱物学・岩石学・地質学の最高権威であるフィールド地質学者AIです。
-ユーザーから提供された【採取場所・地質コンテキスト】、【五感・物性観察データ】、および【多角写真（全体、割れ口、濡れ、UV蛍光）】を総合的に分析し、厳密かつロマンのある岩石・鉱物鑑定レポートを作成してください。
+ユーザーから提供された【採取場所・地質コンテキスト】、【簡易物性・観察データ】、および【標本写真（1〜4枚）】を総合的に分析し、厳密かつロマンのある岩石・鉱物鑑定レポートを作成してください。
 
 ### 【入力観察データ】
 ・採取環境: ${env}
@@ -1204,8 +1224,8 @@
 ### 【鑑定の厳守ルール】
 1. **地質学的整合性の検証:**
    入力された地質情報から「この場所で産出するのが合理的か」を論理的に考察してください。
-2. **多角写真の照合:**
-   写真①（全体像）、写真②（割れ口・マクロ結晶）、写真③（濡れ・透光性）、写真④（UV蛍光照射）の所見を具体的に解説してください。
+2. **提供された写真だけを照合:**
+   写真は1〜4枚のうち、実際にアップロードされたものだけを分析してください。各画像の直前に付与された役割ラベル（全体像／割れ口・結晶／濡れ・透過／UV蛍光）を厳守し、未提供スロットの所見を推測・捏造してはいけません。
 
 以下の形式（Markdown表記）で出力してください：
 
@@ -1231,8 +1251,15 @@
 `;
 
       const parts = [{ text: prompt }];
+      const photoRoleLabels = {
+        1: '写真①：全体像（乾いた状態）',
+        2: '写真②：割れ口・結晶（マクロ接写）',
+        3: '写真③：濡らし・透過（水濡れ／透過光）',
+        4: '写真④：UV蛍光（365nm照射）'
+      };
       [1, 2, 3, 4].forEach(idx => {
         if (imageBase64s[idx]) {
+          parts.push({ text: `【${photoRoleLabels[idx]}】` });
           parts.push({
             inline_data: {
               mime_type: "image/jpeg",
@@ -1252,7 +1279,11 @@
         const data = await response.json();
         if (data.error) throw new Error(data.error.message);
 
-        const resultText = data.candidates[0].content.parts[0].text;
+        const resultText = data.candidates?.[0]?.content?.parts
+          ?.map(part => part.text || '')
+          .join('')
+          .trim();
+        if (!resultText) throw new Error('AIから有効な鑑定テキストが返りませんでした。モデルまたはAPI利用状況をご確認ください。');
         lastReportSummary = resultText;
 
         const match = resultText.match(/🏆 最有力候補:\s*【(.*?)】/);
