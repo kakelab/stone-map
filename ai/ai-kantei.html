@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-BNHDTW7R3W"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-BNHDTW7R3W");
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>石拾いAI鑑定局 - 大地の記憶を読み解く鉱物アナライザー</title>
+  
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #f4f1ea;
+      --card-bg: #fdfbf7;
+      --navy: #1b2a38;
+      --navy-light: #2c3e50;
+      --terracotta: #b84a39;
+      --brass: #bfa15f;
+      --brass-dark: #8c733e;
+      --border-color: #dcd6c8;
+      --text-main: #2b2b2b;
+      --text-muted: #6b665c;
+    }
+    body {
+      margin: 0;
+      padding: 16px 12px 32px;
+      font-family: "Georgia", "Hiragino Mincho ProN", "Yu Mincho", serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      box-sizing: border-box;
+    }
+    .container {
+      max-width: 620px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 20px 16px;
+      box-shadow: 0 8px 24px rgba(27, 42, 56, 0.08);
+      border: 1px solid var(--border-color);
+      position: relative;
+    }
+
+    /* クラシカルヘッダー */
+    .header-box {
+      border-bottom: 2px solid var(--navy);
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+      position: relative;
+    }
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .badge-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .ver-badge {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      background: var(--navy);
+      color: #fff;
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+    .log-btn {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 10.5px;
+      font-weight: 600;
+      background: transparent;
+      border: 1px solid var(--brass);
+      color: var(--brass-dark);
+      padding: 2px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .log-btn:hover {
+      background: #f7f1e5;
+    }
+    .settings-link {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 11px;
+      color: var(--text-muted);
+      cursor: pointer;
+      text-decoration: underline;
+    }
+    h1 {
+      font-size: 21px;
+      color: var(--navy);
+      margin: 6px 0 2px;
+      letter-spacing: 1px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .sub-title {
+      font-size: 10.5px;
+      color: var(--terracotta);
+      letter-spacing: 0.5px;
+      margin: 0;
+      font-style: italic;
+    }
+
+    /* セクションタイトル */
+    .section-title {
+      font-size: 13.5px;
+      font-weight: bold;
+      color: var(--navy);
+      margin: 18px 0 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 4px;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .input-box {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 9px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 12px;
+      background: #fff;
+      color: var(--text-main);
+      font-family: inherit;
+    }
+    .input-box:focus {
+      border-color: var(--terracotta);
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(184, 74, 57, 0.15);
+    }
+
+    /* ボタングループ */
+    .btn-group-loc {
+      display: flex;
+      gap: 5px;
+    }
+    .btn-antique {
+      background: var(--navy-light);
+      color: #fff;
+      border: 1px solid var(--navy);
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-size: 10.5px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .btn-antique.map-btn {
+      background: #2b5b75;
+    }
+    .geo-status {
+      font-size: 10.5px;
+      color: #2e6930;
+      font-weight: bold;
+      margin-top: 4px;
+      display: none;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    
+    .log-select-box {
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    .log-select-box select {
+      flex: 1;
+      padding: 5px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      font-size: 11px;
+      background: #fff;
+    }
+
+    /* 標本トレイ風写真スロット（2×2グリッド） */
+    .photo-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .photo-slot {
+      aspect-ratio: 1.25;
+      border: 1.5px dashed #bfa15f;
+      border-radius: 8px;
+      position: relative;
+      background: #faf8f5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      overflow: hidden;
+      text-align: center;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.03);
+    }
+    .photo-slot.uv-slot {
+      border-color: #8e24aa;
+      background: #fdfafc;
+    }
+    .photo-slot input {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      opacity: 0;
+      cursor: pointer;
+      z-index: 5;
+    }
+    .photo-slot img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: none;
+      position: absolute;
+      top: 0; left: 0;
+    }
+    .photo-label {
+      font-size: 11px;
+      color: #7a7060;
+      font-weight: bold;
+      padding: 2px 6px;
+      line-height: 1.35;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    /* 選択肢チップ */
+    .chip-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .chip-btn {
+      padding: 5px 10px;
+      border-radius: 16px;
+      background: #eeebe3;
+      border: 1px solid var(--border-color);
+      font-size: 11px;
+      cursor: pointer;
+      color: var(--text-main);
+      font-weight: 600;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    .chip-btn.active {
+      background: #fbeee8;
+      border-color: var(--terracotta);
+      color: var(--terracotta);
+    }
+    .chip-btn.uv-chip.active {
+      background: #f6edf8;
+      border-color: #ab47bc;
+      color: #6a1b9a;
+    }
+
+    /* モデル選択バー */
+    .model-selector-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #ede9df;
+      border: 1px solid #d5cec0;
+      padding: 7px 12px;
+      border-radius: 6px;
+      margin-top: 16px;
+      font-size: 11px;
+      font-weight: bold;
+      color: var(--navy);
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    .model-selector-bar select {
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--navy-light);
+      font-size: 11px;
+      font-weight: bold;
+      color: var(--navy);
+      background: #fff;
+    }
+
+    /* 鑑定ボタン（英国公認印風） */
+    .run-btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #b84a39, #8f3426);
+      color: #fff;
+      border: 1px solid #6b261b;
+      border-radius: 6px;
+      font-size: 15px;
+      font-weight: bold;
+      letter-spacing: 1px;
+      box-shadow: 0 4px 12px rgba(184, 74, 57, 0.25);
+      cursor: pointer;
+      margin-top: 12px;
+      font-family: inherit;
+    }
+    .run-btn:disabled {
+      background: #b0a99c;
+      border-color: #969085;
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    /* 羊皮紙風鑑定書レポート */
+    .report-card {
+      display: none;
+      margin-top: 20px;
+      padding: 16px 18px;
+      background: #faf7f0;
+      border: 2px solid var(--brass);
+      border-radius: 8px;
+      font-size: 12.5px;
+      line-height: 1.7;
+      box-shadow: inset 0 0 10px rgba(191, 161, 95, 0.08);
+      position: relative;
+    }
+    .report-card h3 {
+      margin: 0 0 10px;
+      font-size: 16px;
+      color: var(--navy);
+      border-bottom: 1.5px solid var(--brass);
+      padding-bottom: 5px;
+      letter-spacing: 1px;
+    }
+
+    .action-button-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--brass);
+    }
+    .post-btn {
+      flex: 1;
+      padding: 10px;
+      border-radius: 6px;
+      border: none;
+      font-size: 11.5px;
+      font-weight: bold;
+      cursor: pointer;
+      color: white;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    /* モーダル */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(27, 42, 56, 0.65);
+      z-index: 3000;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-box {
+      background: #fdfbf7;
+      padding: 16px;
+      border-radius: 10px;
+      width: 92%;
+      max-width: 540px;
+      box-sizing: border-box;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+      border: 1px solid var(--border-color);
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    .picker-map-wrap {
+      flex: 1;
+      min-height: 260px;
+      position: relative;
+      margin-top: 6px;
+    }
+    #pickerMap {
+      width: 100%;
+      height: 100%;
+      min-height: 260px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+    }
+    .picker-crosshair {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 600;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--terracotta);
+      background: rgba(255,255,255,0.88);
+      border: 2px solid var(--terracotta);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      font: 800 18px/1 -apple-system, BlinkMacSystemFont, sans-serif;
+      pointer-events: none;
+    }
+    .picker-tools {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 6px;
+      margin-top: 6px;
+      align-items: center;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    .picker-tools select {
+      min-width: 0;
+      padding: 6px 8px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: #fff;
+      font-size: 10.5px;
+      color: var(--navy);
+    }
+    .picker-tool-btn {
+      border: 1px solid #bfc6cc;
+      background: #fff;
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--navy);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .picker-layer-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      background: #eeebe3;
+      padding: 5px 9px;
+      border-radius: 6px;
+      margin-top: 6px;
+      font: 700 10.5px/1.3 -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--navy);
+    }
+    .picker-layer-row label { display:flex; align-items:center; gap:4px; cursor:pointer; }
+    .picker-help {
+      font: 10px/1.45 -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .picker-bar {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .opacity-control-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #eeebe3;
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin-top: 6px;
+      font-size: 11px;
+      font-weight: bold;
+      color: var(--navy);
+    }
+    .opacity-slider {
+      flex: 1;
+      max-width: 180px;
+      margin-left: 10px;
+      cursor: pointer;
+    }
+    .picker-info {
+      font-size: 11px;
+      color: var(--text-main);
+      background: #f3efe6;
+      padding: 6px 10px;
+      border-radius: 6px;
+      margin-top: 6px;
+      min-height: 32px;
+      display: flex;
+      align-items: center;
+      border: 1px solid #e0dbce;
+    }
+    .btn-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+    }
+    .btn-act {
+      flex: 1;
+      padding: 9px;
+      border-radius: 6px;
+      border: none;
+      color: white;
+      font-weight: bold;
+      font-size: 11px;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    /* 更新履歴リスト */
+    .changelog-list {
+      max-height: 60vh;
+      overflow-y: auto;
+      font-size: 11.5px;
+      line-height: 1.6;
+      color: var(--text-main);
+    }
+    .changelog-item {
+      margin-bottom: 14px;
+      border-bottom: 1px dashed var(--border-color);
+      padding-bottom: 10px;
+    }
+    .changelog-ver {
+      font-weight: bold;
+      color: var(--terracotta);
+      font-size: 12.5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- ヘッダーエリア -->
+    <div class="header-box">
+      <div class="header-top">
+        <div class="badge-group">
+          <span class="ver-badge">Ver 1.2</span>
+          <button class="log-btn" onclick="openLogModal()">📜 更新履歴</button>
+        </div>
+        <span class="settings-link" onclick="toggleSettings()">⚙️ API設定</span>
+      </div>
+      <h1>🏛️ 石拾いAI鑑定局</h1>
+      <p class="sub-title">〜 大地の記憶を読み解く鉱物アナライザー 〜</p>
+    </div>
+
+    <!-- APIキー設定（アコーディオン） -->
+    <div id="settingsBox" style="display:none; background:#eeeae0; padding:10px; border-radius:6px; margin-bottom:14px; border:1px solid #d5cec0;">
+      <label style="font-size:10.5px; font-weight:bold; color:var(--navy); font-family:-apple-system,sans-serif;">Google Gemini API Key:</label>
+      <input type="password" id="apiKeyInput" class="input-box" placeholder="AI Studioで取得したAPIキーを入力" style="margin-top:4px;" onchange="saveApiKey()">
+      <div style="font-size:9.5px; color:var(--text-muted); margin-top:3px; line-height:1.45; font-family:-apple-system,sans-serif;">
+        ※APIキーはこのブラウザのlocalStorageに保存され、カケラボのサーバーには送信されません。<br>
+        ※写真・入力情報はGemini APIへ直接送信されます。Google側でのデータ取扱いは利用プラン・規約に従います。
+      </div>
+    </div>
+
+    <!-- ① 採取場所・地質コンテキスト -->
+    <div class="section-title">
+      <span>📍 1. 採取地＆地質環境</span>
+      <div class="btn-group-loc">
+        <button class="btn-antique map-btn" onclick="openMapPicker()">🗺️ 地図指定</button>
+        <button class="btn-antique" onclick="fetchLocationGPS()">📍 現在地GPS</button>
+      </div>
+    </div>
+
+    <!-- 前作マップの採集ログから復元 -->
+    <div id="logSelectContainer" class="log-select-box" style="display:none;">
+      <span>📁 保存ログから:</span>
+      <select id="logSelectDropdown" onchange="applySavedLog(this.value)">
+        <option value="">-- 過去に採集した場所を選択 --</option>
+      </select>
+    </div>
+
+    <div class="chip-group" id="envChips" style="margin-top:6px;">
+      <button class="chip-btn active" onclick="selectChip(this, 'env')">未指定</button>
+      <button class="chip-btn" onclick="selectChip(this, 'env')">川原（中州・砂利）</button>
+      <button class="chip-btn" onclick="selectChip(this, 'env')">海岸（波打ち際）</button>
+      <button class="chip-btn" onclick="selectChip(this, 'env')">沢筋・渓谷</button>
+      <button class="chip-btn" onclick="selectChip(this, 'env')">露頭・山林</button>
+    </div>
+
+    <input type="text" id="geoInput" class="input-box" placeholder="地図指定・GPS・写真Exifから自動入力されます（手動編集も可）">
+    <div id="geoStatusText" class="geo-status"></div>
+
+    <!-- ② 標本スロット（1〜4枚・4アングル対応） -->
+    <div class="section-title">
+      <span>📸 2. 標本写真（1〜4枚・4アングル対応）</span>
+      <span style="font-size:9.5px; color:var(--text-muted); font-weight:normal; font-family:-apple-system,sans-serif;">※写真①から位置情報を自動解析</span>
+    </div>
+    <div class="photo-grid">
+      <div class="photo-slot" id="slot1">
+        <span class="photo-label">① 全体像（推奨）<br>(乾いた状態/Exif)</span>
+        <img id="img1">
+        <input type="file" accept="image/*" onchange="previewImage(this, 1)">
+      </div>
+      <div class="photo-slot" id="slot2">
+        <span class="photo-label">② 割れ口・結晶（任意）<br>(マクロ接写)</span>
+        <img id="img2">
+        <input type="file" accept="image/*" onchange="previewImage(this, 2)">
+      </div>
+      <div class="photo-slot" id="slot3">
+        <span class="photo-label">③ 濡らし/透過（任意）<br>(水や下からの光)</span>
+        <img id="img3">
+        <input type="file" accept="image/*" onchange="previewImage(this, 3)">
+      </div>
+      <div class="photo-slot uv-slot" id="slot4">
+        <span class="photo-label" style="color:#8e24aa;">④ 🔦 UV蛍光（任意）<br>(365nmライト照射)</span>
+        <img id="img4">
+        <input type="file" accept="image/*" onchange="previewImage(this, 4)">
+      </div>
+    </div>
+
+    <!-- ③ 簡易物性・観察データ -->
+    <div class="section-title">🧪 3. 簡易物性・観察チェック</div>
+    
+    <div style="font-size:11px; font-weight:bold; color:#6a1b9a; margin:4px 0 2px; font-family:-apple-system,sans-serif;">🔦 UV（紫外線365nm）蛍光反応:</div>
+    <div class="chip-group" id="uvChips">
+      <button class="chip-btn uv-chip active" onclick="selectChip(this, 'uv')">未測定</button>
+      <button class="chip-btn uv-chip" onclick="selectChip(this, 'uv')">光らない（なし）</button>
+      <button class="chip-btn uv-chip" onclick="selectChip(this, 'uv')">💜 青紫（蛍石等）</button>
+      <button class="chip-btn uv-chip" onclick="selectChip(this, 'uv')">❤️ 赤/ピンク（方解石等）</button>
+      <button class="chip-btn uv-chip" onclick="selectChip(this, 'uv')">🧡 橙/黄（ユーパーライト等）</button>
+      <button class="chip-btn uv-chip" onclick="selectChip(this, 'uv')">💚 ネオングリーン（オパール等）</button>
+      <button class="chip-btn uv-chip" onclick="selectChip(this, 'uv')">💙 青白（石油水晶等）</button>
+    </div>
+
+    <div style="font-size:11px; font-weight:bold; color:var(--text-muted); margin:6px 0 2px; font-family:-apple-system,sans-serif;">硬さテスト:</div>
+    <div class="chip-group" id="hardChips">
+      <button class="chip-btn active" onclick="selectChip(this, 'hard')">未測定</button>
+      <button class="chip-btn" onclick="selectChip(this, 'hard')">超硬い（ガラスに傷つく）</button>
+      <button class="chip-btn" onclick="selectChip(this, 'hard')">普通（釘で傷つく）</button>
+      <button class="chip-btn" onclick="selectChip(this, 'hard')">柔らかい（爪や硬貨で傷）</button>
+    </div>
+
+    <div style="font-size:11px; font-weight:bold; color:var(--text-muted); margin:4px 0 2px; font-family:-apple-system,sans-serif;">質感・手触り:</div>
+    <div class="chip-group" id="textureChips">
+      <button class="chip-btn active" onclick="selectChip(this, 'texture')">未測定</button>
+      <button class="chip-btn" onclick="selectChip(this, 'texture')">ツルツル/ガラス感</button>
+      <button class="chip-btn" onclick="selectChip(this, 'texture')">ザラザラ/粒状</button>
+      <button class="chip-btn" onclick="selectChip(this, 'texture')">ろうそくの油感</button>
+      <button class="chip-btn" onclick="selectChip(this, 'texture')">石鹸のヌルヌル感</button>
+    </div>
+
+    <div style="font-size:11px; font-weight:bold; color:var(--text-muted); margin:4px 0 2px; font-family:-apple-system,sans-serif;">重み＆磁性:</div>
+    <div class="chip-group" id="weightChips">
+      <button class="chip-btn active" onclick="selectChip(this, 'weight')">未測定</button>
+      <button class="chip-btn" onclick="selectChip(this, 'weight')">ずっしり重い</button>
+      <button class="chip-btn" onclick="selectChip(this, 'weight')">普通の重さ</button>
+      <button class="chip-btn" onclick="selectChip(this, 'weight')">軽い</button>
+    </div>
+    <div style="font-size:11px; font-weight:bold; color:var(--text-muted); margin:4px 0 2px; font-family:-apple-system,sans-serif;">磁性:</div>
+    <div class="chip-group" id="magnetChips">
+      <button class="chip-btn active" onclick="selectChip(this, 'magnet')">未測定</button>
+      <button class="chip-btn" onclick="selectChip(this, 'magnet')">🧲 磁石がつく</button>
+      <button class="chip-btn" onclick="selectChip(this, 'magnet')">磁石がつかない</button>
+    </div>
+
+    <!-- AIモデル選択バー -->
+    <div class="model-selector-bar">
+      <span>🤖 推論鑑定AIモデル:</span>
+      <select id="geminiModelSelect" onchange="saveSelectedModel()">
+        <option value="gemini-3.8-flash" selected>Gemini 3.8 Flash（最新・推奨）</option>
+        <option value="gemini-3.7-flash">Gemini 3.7 Flash（前世代・安定）</option>
+        <option value="gemini-3.6-flash">Gemini 3.6 Flash（旧世代・安定）</option>
+        <option value="gemini-3.5-flash">Gemini 3.5 Flash（旧世代・互換）</option>
+      </select>
+    </div>
+
+    <button class="run-btn" id="runBtn" onclick="runAnalysis()">🔬 地質推論鑑定を実行する</button>
+    <div style="font-size:9.5px; line-height:1.45; color:var(--text-muted); margin-top:6px; font-family:-apple-system,sans-serif;">
+      ※AI結果は写真と入力情報からの推定です。候補の確認には比重・硬度・条痕・ルーペ観察など、安全に行える追加確認を推奨します。薬品を使う検査は適切な知識・保護具のもとで行ってください。
+    </div>
+
+    <!-- 鑑定書レポート＆アクション -->
+    <div class="report-card" id="reportCard">
+      <h3>🏛️ AI地質推定レポート</h3>
+      <div id="reportContent"></div>
+      
+      <div class="action-button-row">
+        <button class="post-btn" style="background:#2e6930;" onclick="saveToMapLogs()">
+          🗺️ マップのログに逆保存
+        </button>
+        <button class="post-btn" style="background:var(--terracotta);" onclick="downloadSpecimenCard()">
+          📜 標本カードを保存
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 地図ピッカーモーダル -->
+  <div class="modal-overlay" id="mapPickerModal">
+    <div class="modal-box" style="height:88vh; display:flex; flex-direction:column;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <b style="font-size:13.5px; color:var(--navy);">🗺️ 採取地点を選択</b>
+        <span style="font-size:18px; cursor:pointer; color:#888;" onclick="closeMapPicker()">✕</span>
+      </div>
+
+      <div class="picker-bar">
+        <input type="text" id="mapSearchInput" class="input-box" placeholder="地名・河川名を検索（例: 久慈川、糸魚川）" onkeypress="if(event.key==='Enter') searchLocation()">
+        <button class="btn-antique" style="background:var(--navy); padding:0 12px;" onclick="searchLocation()">検索</button>
+      </div>
+
+      <div class="picker-tools">
+        <select id="pickerBaseSelect" onchange="changePickerBase(this.value)" aria-label="地図の種類">
+          <option value="std" selected>標準地図（地名が見やすい）</option>
+          <option value="pale">淡色地図</option>
+          <option value="photo">航空写真</option>
+          <option value="hillshade">陰影起伏図</option>
+        </select>
+        <button class="picker-tool-btn" onclick="pickerUseCurrentLocation()">📍 現在地</button>
+        <button class="picker-tool-btn" onclick="pickerUsePreviousLocation()">↩ 前回地点</button>
+      </div>
+
+      <div class="picker-layer-row">
+        <label><input type="checkbox" id="pickerGeologyToggle" onchange="togglePickerGeology(this.checked)"> 🧭 地質図を重ねる</label>
+        <span>濃さ <b id="pickerOpacityVal" style="color:var(--terracotta);">25%</b></span>
+        <input type="range" id="pickerOpacitySlider" class="opacity-slider" min="0" max="1" step="0.05" value="0.25" aria-label="地質図の濃さ">
+      </div>
+
+      <div class="picker-map-wrap">
+        <div id="pickerMap"></div>
+        <div class="picker-crosshair">＋</div>
+      </div>
+      <div class="picker-help">地図を動かして中央の＋を合わせるか、地図を直接タップしてください。選択は「この場所を適用」を押すまで本体へ反映されません。</div>
+
+      <div class="btn-row" style="margin-top:6px;">
+        <button class="btn-act" style="background:#2b5b75;" onclick="selectPickerCenter()">＋ 地図中央を仮選択</button>
+      </div>
+
+      <div id="pickerSelectedInfo" class="picker-info">
+        まず地名検索・現在地・地図操作で採取地点を探してください。
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-act" style="background:#8c857b;" onclick="closeMapPicker()">キャンセル</button>
+        <button class="btn-act" id="applyGeoBtn" style="background:var(--navy);" disabled onclick="applyPickerLocation()">この場所を適用</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 更新履歴モーダル -->
+  <div class="modal-overlay" id="changelogModal">
+    <div class="modal-box" style="max-height:80vh;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1.5px solid var(--brass); padding-bottom:6px; margin-bottom:12px;">
+        <b style="font-size:14px; color:var(--navy);">📜 石拾いAI鑑定局 更新履歴</b>
+        <span style="font-size:18px; cursor:pointer; color:#888;" onclick="closeLogModal()">✕</span>
+      </div>
+
+      <div class="changelog-list">
+        <div class="changelog-item">
+          <div class="changelog-ver">🏛️ Ver 1.2 (2026.09) - Gemini 3.8・画像入力精度アップデート</div>
+          <ul style="margin:6px 0 0; padding-left:18px;">
+            <li>Gemini 3.8 Flash（GA）に対応し、新規利用時の推奨モデルに設定</li>
+            <li>標本写真が1枚から鑑定可能であることをUI上で明確化</li>
+            <li>各画像に「全体像・割れ口・濡れ/透過・UV」の役割ラベルを付けてAIへ送信</li>
+            <li>未アップロードの写真についてAIが所見を推測・捏造しないルールを追加</li>
+            <li>APIキー保存・Gemini APIへのデータ送信について説明をより正確な表現へ更新</li>
+            <li>追加確認の案内を比重・硬度・条痕・ルーペ観察など安全な方法優先に整理</li>
+          </ul>
+        </div>
+        <div class="changelog-item">
+          <div class="changelog-ver">🏛️ Ver 1.1 (2026.09) - 地図・推論品質アップデート</div>
+          <ul style="margin:6px 0 0; padding-left:18px;">
+            <li>採取地点ピッカーを標準地図中心の見やすいUIへ刷新</li>
+            <li>標準・淡色・航空写真・陰影起伏図の切替、地質図ON/OFFを追加</li>
+            <li>現在地・前回地点・地図中央からの仮選択に対応</li>
+            <li>地図での仮選択が確定前に本体フォームへ反映される挙動を修正</li>
+            <li>五感・物性の初期値を「未測定」に変更し、未観察情報の誤混入を防止</li>
+            <li>AI出力を確率風の確信度表示から、根拠・矛盾・追加確認重視へ変更</li>
+            <li>Free / Pro / AI鑑定局の採集ログを共通標本データとして同期</li>
+          </ul>
+        </div>
+        <div class="changelog-item">
+          <div class="changelog-ver">🏛️ Ver 1.0 (2026.09) - 初回正式リリース</div>
+          <ul style="margin:6px 0 0; padding-left:18px;">
+            <li>『石拾いAI鑑定局』正式ローンチ</li>
+            <li>英国博物館×フィールド研究室をモチーフにしたクラシックUIへ全面刷新</li>
+            <li>自宅撮影写真による採取地Exif誤上書き防止ガード（確認ダイアログ）搭載</li>
+            <li>最新Gemini 3.6 / 3.7 Flashモデル対応＆リアルタイム切り替えセレクター実装</li>
+            <li>地図ピッカーに「地質図の濃淡スライダー」を新設（航空写真の視認性向上）</li>
+            <li>産総研シームレス地質図API×4アングル写真×五感物性チェックによる本格推論</li>
+            <li>UV（365nm）紫外線蛍光分析スロット＆蛍光色判別チップ搭載</li>
+            <li>鑑定結果の『石拾い地質マップ』採集ログへのワンタップ逆保存機能</li>
+            <li>クラシカルな学術鑑定書・標本カード（PNG画像）自動生成＆出力機能</li>
+          </ul>
+        </div>
+      </div>
+
+      <button class="btn-act" style="background:var(--navy); width:100%; margin-top:8px;" onclick="closeLogModal()">閉じる</button>
+    </div>
+  </div>
+
+  <canvas id="specimenCanvas" style="display:none;"></canvas>
+
+  <script>
+    const imageBase64s = { 1: null, 2: null, 3: null, 4: null };
+    let pickerMap = null;
+    let pickerMarker = null;
+    let pickerGeologyLayer = null;
+    let pickerBaseLayers = null;
+    let pickerCurrentBase = null;
+    let tempPickerGeoData = null;
+    let tempPickerLatLng = null;
+    let tempPickerPlaceLabel = '';
+    let savedLogsCache = [];
+    
+    let currentResolvedLatLng = null;
+    let lastIdentifiedStoneName = "鑑定番外鉱物";
+    let lastReportSummary = "";
+
+    const KAKELAB_LOG_KEY = 'kakelab_specimens_v2';
+    function logSignature(item) {
+      return [Number(item.lat).toFixed(5), Number(item.lng).toFixed(5), item.name || '', item.date || '', item.memo || ''].join('|');
+    }
+    function mergeUniqueLogs(...groups) {
+      const seen = new Set();
+      const out = [];
+      groups.flat().forEach(item => {
+        if (!item || !Number.isFinite(Number(item.lat)) || !Number.isFinite(Number(item.lng))) return;
+        const normalized = { ...item, lat: Number(item.lat), lng: Number(item.lng) };
+        const sig = logSignature(normalized);
+        if (!seen.has(sig)) { seen.add(sig); out.push(normalized); }
+      });
+      return out;
+    }
+    const KAKELAB_MIGRATION_KEY = 'kakelab_specimens_v2_migrated';
+    function getSpecimenLogs() {
+      let common = JSON.parse(localStorage.getItem(KAKELAB_LOG_KEY) || '[]');
+      if (!localStorage.getItem(KAKELAB_MIGRATION_KEY) || !localStorage.getItem(KAKELAB_LOG_KEY)) {
+        const free = JSON.parse(localStorage.getItem('stone_logs') || '[]');
+        const pro = JSON.parse(localStorage.getItem('stone_logs_pro') || '[]');
+        common = mergeUniqueLogs(common, free, pro);
+        localStorage.setItem(KAKELAB_LOG_KEY, JSON.stringify(common));
+        localStorage.setItem(KAKELAB_MIGRATION_KEY, '1');
+      }
+      return mergeUniqueLogs(common);
+    }
+    function setSpecimenLogs(logs) {
+      const clean = mergeUniqueLogs(logs);
+      localStorage.setItem(KAKELAB_LOG_KEY, JSON.stringify(clean));
+      localStorage.setItem(KAKELAB_MIGRATION_KEY, '1');
+    }
+    function makeSpecimenId() {
+      return `kl-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
+    }
+
+    function toggleSettings() {
+      const el = document.getElementById('settingsBox');
+      el.style.display = (el.style.display === 'none') ? 'block' : 'none';
+    }
+    function saveApiKey() {
+      localStorage.setItem('gemini_api_key', document.getElementById('apiKeyInput').value.trim());
+    }
+    function saveSelectedModel() {
+      localStorage.setItem('gemini_selected_model', document.getElementById('geminiModelSelect').value);
+    }
+
+    function openLogModal() {
+      document.getElementById('changelogModal').style.display = 'flex';
+    }
+    function closeLogModal() {
+      document.getElementById('changelogModal').style.display = 'none';
+    }
+
+    window.onload = () => {
+      const savedKey = localStorage.getItem('gemini_api_key');
+      if (savedKey) document.getElementById('apiKeyInput').value = savedKey;
+      else toggleSettings();
+
+      const savedModel = localStorage.getItem('gemini_selected_model');
+      const modelSelect = document.getElementById('geminiModelSelect');
+      if (savedModel && Array.from(modelSelect.options).some(opt => opt.value === savedModel)) {
+        modelSelect.value = savedModel;
+      } else {
+        modelSelect.value = 'gemini-3.8-flash';
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const geo = params.get('geo');
+      const env = params.get('env');
+      const lat = params.get('lat');
+      const lng = params.get('lng');
+      if (lat && lng) {
+        currentResolvedLatLng = { lat: parseFloat(lat), lng: parseFloat(lng) };
+      }
+      if (geo) {
+        document.getElementById('geoInput').value = decodeURIComponent(geo);
+        showGeoStatus(`🗺️ マップ連携から地質を自動入力しました: ${geo}`);
+      }
+      if (env) {
+        document.querySelectorAll('#envChips .chip-btn').forEach(btn => {
+          if (btn.innerText.includes(env)) selectChip(btn, 'env');
+        });
+      }
+
+      populateSavedLogs();
+    };
+
+    function showGeoStatus(text) {
+      const el = document.getElementById('geoStatusText');
+      el.innerText = text;
+      el.style.display = 'block';
+    }
+
+    function populateSavedLogs() {
+      savedLogsCache = getSpecimenLogs();
+
+      if (savedLogsCache.length > 0) {
+        const dropdown = document.getElementById('logSelectDropdown');
+        dropdown.innerHTML = '<option value="">-- 過去に採集した場所を選択 --</option>';
+        savedLogsCache.forEach((item, idx) => {
+          const opt = document.createElement('option');
+          opt.value = idx;
+          opt.innerText = `💎 ${item.name} (${item.date || '日付未記録'}) [${item.lat.toFixed(3)}, ${item.lng.toFixed(3)}]`;
+          dropdown.appendChild(opt);
+        });
+        document.getElementById('logSelectContainer').style.display = 'flex';
+      }
+    }
+
+    function applySavedLog(idx) {
+      if (idx === "") return;
+      const item = savedLogsCache[idx];
+      if (item) {
+        currentResolvedLatLng = { lat: item.lat, lng: item.lng };
+        resolveGeologyFromLatLng(item.lat, item.lng, `採集ログ「${item.name}」`);
+      }
+    }
+
+    async function fetchGeologyInfo(lat, lng, sourceName = '指定地点') {
+      let geoInfo = `【${sourceName}座標】緯度:${lat.toFixed(4)}, 経度:${lng.toFixed(4)}`;
+      try {
+        const res = await fetch(`https://gbank.gsj.jp/seamless/v2/api/1.2/point?lat=${lat}&lng=${lng}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.properties) {
+            const p = data.properties;
+            const rockType = p.formation_ja || p.group_ja || p.lithology_ja || p.title || '';
+            const era = p.era_ja || '';
+            const description = [era, rockType].filter(Boolean).join(' ') || '地質名未取得';
+            geoInfo = `【${sourceName}特定】${description}（座標: ${lat.toFixed(4)}, ${lng.toFixed(4)}）`;
+          }
+        }
+      } catch (e) {}
+      return geoInfo;
+    }
+
+    async function fetchPlaceLabel(lat, lng) {
+      try {
+        const res = await fetch(`https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lon=${lng}&lat=${lat}`);
+        if (!res.ok) return '';
+        const data = await res.json();
+        return data?.results?.lv01Nm || '';
+      } catch (e) { return ''; }
+    }
+
+    async function resolveGeologyFromLatLng(lat, lng, sourceName = 'GPS') {
+      currentResolvedLatLng = { lat, lng };
+      showGeoStatus(`⏳ ${sourceName}座標(${lat.toFixed(3)}, ${lng.toFixed(3)})から地質データを照会中...`);
+      const geoInfo = await fetchGeologyInfo(lat, lng, sourceName);
+      document.getElementById('geoInput').value = geoInfo;
+      showGeoStatus(`✅ ${sourceName}から地質環境を自動取得しました！`);
+      return geoInfo;
+    }
+
+    function fetchLocationGPS() {
+      if (!navigator.geolocation) return alert('GPSが非対応です');
+      showGeoStatus('📍 現在地を取得中...');
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolveGeologyFromLatLng(pos.coords.latitude, pos.coords.longitude, '現在地GPS'),
+        (err) => alert('現在地の取得に失敗しました: ' + err.message),
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+      );
+    }
+
+    function createPickerLayers() {
+      return {
+        std: L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '&copy; 国土地理院' }),
+        pale: L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '&copy; 国土地理院' }),
+        photo: L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg', { maxZoom: 18, attribution: '&copy; 国土地理院' }),
+        hillshade: L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/hillshademap/{z}/{x}/{y}.png', { maxZoom: 16, attribution: '&copy; 国土地理院' })
+      };
+    }
+
+    function openMapPicker() {
+      document.getElementById('mapPickerModal').style.display = 'flex';
+      if (!pickerMap) {
+        pickerBaseLayers = createPickerLayers();
+        pickerCurrentBase = pickerBaseLayers.std;
+        const start = currentResolvedLatLng || { lat: 36.7, lng: 138.5 };
+        pickerMap = L.map('pickerMap', { zoomControl: true, layers: [pickerCurrentBase] }).setView([start.lat, start.lng], currentResolvedLatLng ? 13 : 6);
+
+        pickerGeologyLayer = L.tileLayer('https://gbank.gsj.jp/seamless/v2/api/1.2/tiles/{z}/{y}/{x}.png', {
+          maxZoom: 16,
+          opacity: 0.25,
+          attribution: '&copy; 産総研'
+        });
+
+        const slider = document.getElementById('pickerOpacitySlider');
+        const valText = document.getElementById('pickerOpacityVal');
+        slider.addEventListener('input', (e) => {
+          const val = parseFloat(e.target.value);
+          pickerGeologyLayer.setOpacity(val);
+          valText.innerText = Math.round(val * 100) + '%';
+        });
+
+        pickerMap.on('click', (e) => stagePickerLocation(e.latlng.lat, e.latlng.lng, '地図指定'));
+      } else if (currentResolvedLatLng) {
+        pickerMap.setView([currentResolvedLatLng.lat, currentResolvedLatLng.lng], Math.max(pickerMap.getZoom(), 13));
+      }
+      tempPickerGeoData = null;
+      tempPickerLatLng = null;
+      tempPickerPlaceLabel = '';
+      document.getElementById('applyGeoBtn').disabled = true;
+      document.getElementById('pickerSelectedInfo').innerText = 'まず地名検索・現在地・地図操作で採取地点を探してください。';
+      setTimeout(() => pickerMap.invalidateSize(), 200);
+    }
+
+    function closeMapPicker() {
+      document.getElementById('mapPickerModal').style.display = 'none';
+    }
+
+    function changePickerBase(key) {
+      if (!pickerMap || !pickerBaseLayers?.[key]) return;
+      if (pickerCurrentBase) pickerMap.removeLayer(pickerCurrentBase);
+      pickerCurrentBase = pickerBaseLayers[key];
+      pickerCurrentBase.addTo(pickerMap);
+      pickerCurrentBase.bringToBack();
+    }
+
+    function togglePickerGeology(checked) {
+      if (!pickerMap || !pickerGeologyLayer) return;
+      if (checked) pickerGeologyLayer.addTo(pickerMap);
+      else if (pickerMap.hasLayer(pickerGeologyLayer)) pickerMap.removeLayer(pickerGeologyLayer);
+    }
+
+    async function stagePickerLocation(lat, lng, sourceName = '地図指定', placeHint = '') {
+      tempPickerLatLng = { lat, lng };
+      if (pickerMarker) pickerMap.removeLayer(pickerMarker);
+      pickerMarker = L.marker([lat, lng]).addTo(pickerMap);
+      document.getElementById('pickerSelectedInfo').innerText = `⏳ ${lat.toFixed(4)}, ${lng.toFixed(4)} の地名・地質を照会中...`;
+      document.getElementById('applyGeoBtn').disabled = true;
+
+      const [geoInfo, reverseName] = await Promise.all([
+        fetchGeologyInfo(lat, lng, sourceName),
+        fetchPlaceLabel(lat, lng)
+      ]);
+      tempPickerGeoData = geoInfo;
+      tempPickerPlaceLabel = placeHint || reverseName || '地名情報なし';
+      document.getElementById('pickerSelectedInfo').innerHTML = `📍 <b>${escapeHtml(tempPickerPlaceLabel)}</b><br><span style="font-size:10px; color:#666;">${lat.toFixed(4)}, ${lng.toFixed(4)}</span><br>🪨 ${escapeHtml(geoInfo.replace(/^【.*?】/, ''))}`;
+      document.getElementById('applyGeoBtn').disabled = false;
+    }
+
+    function selectPickerCenter() {
+      if (!pickerMap) return;
+      const c = pickerMap.getCenter();
+      stagePickerLocation(c.lat, c.lng, '地図中央');
+    }
+
+    function pickerUseCurrentLocation() {
+      if (!navigator.geolocation) return alert('GPSが非対応です');
+      document.getElementById('pickerSelectedInfo').innerText = '📍 現在地を取得中...';
+      navigator.geolocation.getCurrentPosition((pos) => {
+        const lat = pos.coords.latitude, lng = pos.coords.longitude;
+        pickerMap.setView([lat, lng], 15);
+        stagePickerLocation(lat, lng, '現在地GPS');
+      }, (err) => alert('現在地の取得に失敗しました: ' + err.message), { enableHighAccuracy:true, timeout:10000, maximumAge:30000 });
+    }
+
+    function pickerUsePreviousLocation() {
+      if (!currentResolvedLatLng) return alert('まだ前回地点がありません。地名検索・GPS・採集ログから地点を指定してください。');
+      pickerMap.setView([currentResolvedLatLng.lat, currentResolvedLatLng.lng], 15);
+      stagePickerLocation(currentResolvedLatLng.lat, currentResolvedLatLng.lng, '前回地点');
+    }
+
+    function applyPickerLocation() {
+      if (!tempPickerGeoData || !tempPickerLatLng) return;
+      currentResolvedLatLng = { ...tempPickerLatLng };
+      document.getElementById('geoInput').value = tempPickerGeoData;
+      const placeText = tempPickerPlaceLabel && tempPickerPlaceLabel !== '地名情報なし' ? `（${tempPickerPlaceLabel}付近）` : '';
+      showGeoStatus(`✅ 地図から指定した地点${placeText}の地質を反映しました！`);
+      closeMapPicker();
+    }
+
+    async function searchLocation() {
+      const q = document.getElementById('mapSearchInput').value.trim();
+      if (!q) return;
+      try {
+        const res = await fetch(`https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(q)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.length > 0) {
+            const [lng, lat] = data[0].geometry.coordinates;
+            const title = data[0]?.properties?.title || q;
+            pickerMap.setView([lat, lng], 14);
+            await stagePickerLocation(lat, lng, `検索「${q}」`, title);
+          } else {
+            alert('該当する場所が見つかりませんでした。地名を少し短くして再検索してください。');
+          }
+        }
+      } catch (e) {
+        alert('検索エラーが発生しました');
+      }
+    }
+
+    // 写真プレビュー＆Exif解析（上書き防止ダイアログつき）
+    function previewImage(input, index) {
+      const file = input.files[0];
+      if (!file) return;
+
+      if (index === 1) {
+        EXIF.getData(file, function() {
+          const lat = EXIF.getTag(this, 'GPSLatitude');
+          const latRef = EXIF.getTag(this, 'GPSLatitudeRef') || 'N';
+          const lng = EXIF.getTag(this, 'GPSLongitude');
+          const lngRef = EXIF.getTag(this, 'GPSLongitudeRef') || 'E';
+
+          if (lat && lng) {
+            const latDec = (lat[0] + lat[1]/60 + lat[2]/3600) * (latRef === 'N' ? 1 : -1);
+            const lngDec = (lng[0] + lng[1]/60 + lng[2]/3600) * (lngRef === 'E' ? 1 : -1);
+            
+            const currentGeo = document.getElementById('geoInput').value.trim();
+            if (currentGeo) {
+              if (confirm("写真から位置情報が検出されました。\n現在セットされている採取地情報を、写真の位置情報で上書きしますか？\n（自宅で撮影した場合などは「キャンセル」を押してください）")) {
+                resolveGeologyFromLatLng(latDec, lngDec, '写真1のExif位置情報');
+              }
+            } else {
+              resolveGeologyFromLatLng(latDec, lngDec, '写真1のExif位置情報');
+            }
+          }
+        });
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxDim = 800;
+          let w = img.width, h = img.height;
+          if (w > h && w > maxDim) { h = (h * maxDim)/w; w = maxDim; }
+          else if (h > maxDim) { w = (w * maxDim)/h; h = maxDim; }
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+
+          const base64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+          imageBase64s[index] = base64;
+
+          const previewImg = document.getElementById(`img${index}`);
+          previewImg.src = canvas.toDataURL('image/jpeg', 0.8);
+          previewImg.style.display = 'block';
+          document.querySelector(`#slot${index} .photo-label`).style.display = 'none';
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>'"]/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[ch]));
+    }
+
+    function selectChip(btn, group) {
+      document.querySelectorAll(`#${group}Chips .chip-btn`).forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+
+    async function runAnalysis() {
+      const apiKey = localStorage.getItem('gemini_api_key');
+      if (!apiKey) {
+        alert('右上の「⚙️ API設定」からGemini APIキーを入力してください！');
+        toggleSettings();
+        return;
+      }
+
+      if (!imageBase64s[1] && !imageBase64s[2] && !imageBase64s[3] && !imageBase64s[4]) {
+        alert('最低でも1枚以上の標本写真をアップロードしてください！');
+        return;
+      }
+
+      const selectedModel = document.getElementById('geminiModelSelect').value;
+
+      const runBtn = document.getElementById('runBtn');
+      runBtn.disabled = true;
+      runBtn.innerText = `🔬 [${selectedModel}] でAI地質推論中...`;
+
+      const env = document.querySelector('#envChips .chip-btn.active')?.innerText || '未指定';
+      const geo = document.getElementById('geoInput').value || '未指定（全国標準）';
+      const uvReaction = document.querySelector('#uvChips .chip-btn.active')?.innerText || '未測定';
+      const hard = document.querySelector('#hardChips .chip-btn.active')?.innerText || '未測定';
+      const texture = document.querySelector('#textureChips .chip-btn.active')?.innerText || '未測定';
+      const weight = document.querySelector('#weightChips .chip-btn.active')?.innerText || '未測定';
+      const isMagnetic = document.querySelector('#magnetChips .chip-btn.active')?.innerText || '未測定';
+
+      const prompt = `
+あなたは鉱物学・岩石学・地質学の最高権威であるフィールド地質学者AIです。
+ユーザーから提供された【採取場所・地質コンテキスト】、【簡易物性・観察データ】、および【標本写真（1〜4枚）】を総合的に分析し、厳密かつロマンのある岩石・鉱物鑑定レポートを作成してください。
+
+### 【入力観察データ】
+・採取環境: ${env}
+・採取地点の地質情報・座標: ${geo}
+・🔦 UV(365nm)蛍光反応: ${uvReaction}
+・硬さテスト結果: ${hard}
+・質感・手触り: ${texture}
+・重み感: ${weight}
+・磁性の有無: ${isMagnetic}
+
+### 【鑑定の厳守ルール】
+1. **地質学的整合性の検証:**
+   入力された地質情報から「この場所で産出するのが合理的か」を論理的に考察してください。
+2. **提供された写真だけを照合:**
+   写真は1〜4枚のうち、実際にアップロードされたものだけを分析してください。各画像の直前に付与された役割ラベル（全体像／割れ口・結晶／濡れ・透過／UV蛍光）を厳守し、未提供スロットの所見を推測・捏造してはいけません。
+
+以下の形式（Markdown表記）で出力してください：
+
+#### 🏆 最有力候補: 【岩石・鉱物名】
+#### 🥈 次点候補: 【岩石・鉱物名】
+#### 🥉 その他候補: 【岩石・鉱物名】
+
+---
+**🔬 地質学的判定の根拠:**
+（画像所見、実際に入力された物性、UV蛍光、地質環境との整合性をプロの視点で解説。未測定項目は根拠に使わない）
+
+**⚖️ 候補に対する矛盾・不確実点:**
+（画像だけでは断定できない特徴、地質情報と合わない点、未測定で判断できない点を明示）
+
+**💎 お宝・変種・内包物の可能性:**
+（瑪瑙のジオード、沸石、ガーネット、化石など、この石に期待できるロマン）
+
+**🛡️ 次回のアクション・確証を得るためのアドバイス:**
+（比重測定、硬度、条痕、ルーペ観察など、安全に実施できる追加確認を優先。薬品を使う検査は必要性と安全上の注意を明記）
+
+**📌 判定の限界:**
+（本結果は画像とユーザー入力に基づく推定であり、分析機器による同定ではないことを簡潔に記載）
+`;
+
+      const parts = [{ text: prompt }];
+      const photoRoleLabels = {
+        1: '写真①：全体像（乾いた状態）',
+        2: '写真②：割れ口・結晶（マクロ接写）',
+        3: '写真③：濡らし・透過（水濡れ／透過光）',
+        4: '写真④：UV蛍光（365nm照射）'
+      };
+      [1, 2, 3, 4].forEach(idx => {
+        if (imageBase64s[idx]) {
+          parts.push({ text: `【${photoRoleLabels[idx]}】` });
+          parts.push({
+            inline_data: {
+              mime_type: "image/jpeg",
+              data: imageBase64s[idx]
+            }
+          });
+        }
+      });
+
+      try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts }] })
+        });
+
+        const data = await response.json();
+        if (data.error) throw new Error(data.error.message);
+
+        const resultText = data.candidates?.[0]?.content?.parts
+          ?.map(part => part.text || '')
+          .join('')
+          .trim();
+        if (!resultText) throw new Error('AIから有効な鑑定テキストが返りませんでした。モデルまたはAPI利用状況をご確認ください。');
+        lastReportSummary = resultText;
+
+        const match = resultText.match(/🏆 最有力候補:\s*【(.*?)】/);
+        lastIdentifiedStoneName = match ? match[1] : "鑑定された石";
+
+        const safeResult = escapeHtml(resultText);
+        const htmlContent = safeResult
+          .replace(/#### (.*?)\n/g, '<div style="font-size:13.5px; font-weight:bold; margin:6px 0; color:var(--navy);">$1</div>')
+          .replace(/### (.*?)\n/g, '<h4 style="color:var(--terracotta); margin:10px 0 4px;">$1</h4>')
+          .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+          .replace(/\n/g, '<br>');
+
+
+        document.getElementById('reportContent').innerHTML = htmlContent;
+        document.getElementById('reportCard').style.display = 'block';
+        document.getElementById('reportCard').scrollIntoView({ behavior: 'smooth' });
+
+      } catch (err) {
+        alert('鑑定エラー: ' + err.message);
+      } finally {
+        runBtn.disabled = false;
+        runBtn.innerText = '🔬 地質推論鑑定を実行する';
+      }
+    }
+
+    function saveToMapLogs() {
+      if (!currentResolvedLatLng) {
+        alert('採取地点が未指定です。地図指定・GPS・採集ログのいずれかで場所を指定してから保存してください。');
+        return;
+      }
+      const now = new Date().toLocaleDateString('ja-JP');
+      const photo = imageBase64s[1] ? `data:image/jpeg;base64,${imageBase64s[1]}` : (imageBase64s[3] ? `data:image/jpeg;base64,${imageBase64s[3]}` : null);
+      const observations = {
+        environment: document.querySelector('#envChips .chip-btn.active')?.innerText || '未指定',
+        uv: document.querySelector('#uvChips .chip-btn.active')?.innerText || '未測定',
+        hardness: document.querySelector('#hardChips .chip-btn.active')?.innerText || '未測定',
+        texture: document.querySelector('#textureChips .chip-btn.active')?.innerText || '未測定',
+        weight: document.querySelector('#weightChips .chip-btn.active')?.innerText || '未測定',
+        magnetism: document.querySelector('#magnetChips .chip-btn.active')?.innerText || '未測定'
+      };
+      const newEntry = {
+        id: makeSpecimenId(),
+        lat: currentResolvedLatLng.lat,
+        lng: currentResolvedLatLng.lng,
+        name: lastIdentifiedStoneName,
+        memo: `AI鑑定済み: ${document.getElementById('geoInput').value}`,
+        date: now,
+        photo,
+        source: 'ai-kantei',
+        geo: document.getElementById('geoInput').value,
+        observations,
+        aiModel: document.getElementById('geminiModelSelect').value,
+        aiReport: lastReportSummary,
+        updatedAt: new Date().toISOString()
+      };
+      const logs = getSpecimenLogs();
+      logs.push(newEntry);
+      setSpecimenLogs(logs);
+
+      alert(`🎉 登録完了！\n「${lastIdentifiedStoneName}」を共通標本ログへ保存しました。\nFree / Proマップのどちらからでも同じログを確認できます。`);
+      populateSavedLogs();
+    }
+
+
+    function downloadSpecimenCard() {
+      const canvas = document.getElementById('specimenCanvas');
+      canvas.width = 600;
+      canvas.height = 840;
+      const ctx = canvas.getContext('2d');
+
+      // 背景（羊皮紙調オフホワイト）
+      ctx.fillStyle = '#fbf9f5';
+      ctx.fillRect(0, 0, 600, 840);
+
+      // 二重フレーム枠（真鍮＆スレート）
+      ctx.strokeStyle = '#1b2a38';
+      ctx.lineWidth = 5;
+      ctx.strokeRect(18, 18, 564, 804);
+      ctx.strokeStyle = '#bfa15f';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(26, 26, 548, 788);
+
+      // ヘッダー
+      ctx.fillStyle = '#1b2a38';
+      ctx.font = 'bold 22px serif';
+      ctx.fillText('🏛️ MINERALOGICAL SPECIMEN ARCHIVE', 45, 65);
+      ctx.fillStyle = '#8c733e';
+      ctx.font = 'italic 12px serif';
+      ctx.fillText('Geological AI Lab • Specimen Estimate Card', 45, 85);
+
+      const photoSrc = imageBase64s[1] || imageBase64s[3] || imageBase64s[2] || imageBase64s[4];
+      const proceedDraw = (imgObj) => {
+        if (imgObj) {
+          ctx.drawImage(imgObj, 45, 105, 510, 360);
+          ctx.strokeStyle = '#bfa15f';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(45, 105, 510, 360);
+        } else {
+          ctx.fillStyle = '#f4f1ea';
+          ctx.fillRect(45, 105, 510, 360);
+          ctx.fillStyle = '#999';
+          ctx.font = '20px serif';
+          ctx.fillText('NO SPECIMEN IMAGE', 190, 290);
+        }
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(45, 485, 510, 295);
+        ctx.strokeStyle = '#dcd6c8';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(45, 485, 510, 295);
+
+        ctx.fillStyle = '#b84a39';
+        ctx.font = 'bold 28px serif';
+        ctx.fillText(`💎 ${lastIdentifiedStoneName}`, 65, 530);
+
+        ctx.fillStyle = '#1b2a38';
+        ctx.font = 'bold 14px sans-serif';
+        const now = new Date().toLocaleDateString('ja-JP');
+        ctx.fillText(`📅 鑑定日: ${now}`, 65, 565);
+        ctx.fillText(currentResolvedLatLng ? `📍 座標: ${currentResolvedLatLng.lat.toFixed(4)}, ${currentResolvedLatLng.lng.toFixed(4)}` : '📍 座標: 未指定', 65, 592);
+        
+        ctx.font = '12px sans-serif';
+        const envText = document.querySelector('#envChips .chip-btn.active')?.innerText || '川原';
+        ctx.fillText(`🌍 産状: ${envText}`, 65, 618);
+
+        ctx.fillStyle = '#455a64';
+        const rawGeo = document.getElementById('geoInput').value || '未特定';
+        const truncatedGeo = rawGeo.length > 32 ? rawGeo.slice(0, 32) + '...' : rawGeo;
+        ctx.fillText(`🗺️ 地質: ${truncatedGeo}`, 65, 642);
+
+        const uvText = document.querySelector('#uvChips .chip-btn.active')?.innerText || 'なし';
+        ctx.fillText(`🔦 UV蛍光: ${uvText}`, 65, 666);
+
+        ctx.fillStyle = '#8c733e';
+        ctx.font = 'italic 11.5px serif';
+        ctx.fillText('Estimated by AI geological multimodal analysis', 65, 750);
+
+        const a = document.createElement('a');
+        a.href = canvas.toDataURL('image/png');
+        a.download = `Specimen_${lastIdentifiedStoneName}_${now.replace(/\//g,'-')}.png`;
+        a.click();
+      };
+
+      if (photoSrc) {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.onload = () => proceedDraw(img);
+        img.src = `data:image/jpeg;base64,${photoSrc}`;
+      } else {
+        proceedDraw(null);
+      }
+    }
+  </script>
+</body>
+</html>
