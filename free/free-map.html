@@ -295,7 +295,7 @@
 
   <!-- 右上: バージョン表示・履歴・全画面 ＆ 設定メニュー -->
   <div class="top-right-bar">
-    <span class="ver-badge-top" style="background:rgba(255,255,255,0.9); color:#555; font-size:9.5px; font-weight:bold; padding:3px 6px; border-radius:5px; align-self:center;">Ver 1.2</span>
+    <span class="ver-badge-top" style="background:rgba(255,255,255,0.9); color:#555; font-size:9.5px; font-weight:bold; padding:3px 6px; border-radius:5px; align-self:center;">Ver 1.3</span>
     <button class="action-fab" onclick="openModal('changelogModal')">📜 履歴</button>
     <button class="action-fab" onclick="toggleFullScreen()">⛶ 全画面</button>
     <button class="action-fab" onclick="openModal('toolsModal')">⚙️ 設定</button>
@@ -409,6 +409,13 @@
       <h3>📜 石拾い地質マップ 更新履歴</h3>
       <div style="font-size:11.5px; line-height:1.6; color:#333; max-height:50vh; overflow-y:auto;">
         <div style="margin-bottom:10px;">
+          <b style="color:#6a1b9a;">🗺️ Ver 1.3（2026.10）</b>
+          <ul style="margin:4px 0 0; padding-left:18px;">
+            <li>Pro版をローカルHTMLで利用する場合に備え、共通標本ログを引き継ぎJSONとして保存できるよう改善</li>
+            <li>新形式JSON・旧形式JSON・Proバックアップ内の標本ログを復元できるよう互換性を拡張</li>
+          </ul>
+        </div>
+        <div style="margin-bottom:10px;">
           <b style="color:#1565c0;">🗺️ Ver 1.2（2026.09）</b>
           <ul style="margin:4px 0 0; padding-left:18px;">
             <li>地名・河川名検索を追加し、事前調査で目的地へ直接移動可能に</li>
@@ -505,7 +512,8 @@
         <div style="font-size:10px; color:#555; margin-bottom:4px;">位置情報付き写真を選ぶだけで自動配置！</div>
         <input type="file" id="batchPhotoInput" accept="image/*" multiple onchange="batchImportPhotos(event)">
       </div>
-      <button class="btn-act" style="background:#1565c0; width:100%; margin-bottom:6px;" onclick="exportLogs()">📤 ログをJSON保存</button>
+      <button class="btn-act" style="background:#1565c0; width:100%; margin-bottom:4px;" onclick="exportLogs()">📤 Pro引き継ぎJSONを保存</button>
+      <div style="font-size:9.5px; color:#666; margin:0 0 7px;">Free / AI鑑定局の共通標本ログを、Pro版へ引き継げるJSONとして保存します。従来のバックアップ用途にも使えます。</div>
       <label><b>📥 バックアップを復元</b></label>
       <input type="file" id="importFile" accept=".json" onchange="importLogs(event)">
       <div class="btn-row">
@@ -1041,11 +1049,18 @@
 
     // 11. バックアップ
     function exportLogs() {
-      const logs = JSON.stringify(getSpecimenLogs());
+      const backup = {
+        format: 'kakelab-specimen-transfer',
+        version: 1,
+        source: 'free',
+        exportedAt: new Date().toISOString(),
+        specimens: getSpecimenLogs()
+      };
       const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([logs], { type: 'application/json' }));
-      a.download = `stone_backup_${new Date().toISOString().slice(0,10)}.json`;
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }));
+      a.download = `kakelab_free_transfer_${new Date().toISOString().slice(0,10)}.json`;
       a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     }
 
     function importLogs(e) {
@@ -1055,14 +1070,22 @@
       reader.onload = (ev) => {
         try {
           const imp = JSON.parse(ev.target.result);
-          if (Array.isArray(imp)) {
-            const cur = getSpecimenLogs();
-            setSpecimenLogs([...cur, ...imp]);
-            alert(`復元完了！ ${imp.length} 件を追加しました。`);
-            loadLogs();
-            closeModal('dataModal');
-          }
-        } catch (err) { alert('ファイルが無効です'); }
+          let incoming = null;
+          if (Array.isArray(imp)) incoming = imp; // Ver1.2以前の旧形式
+          else if (imp?.format === 'kakelab-specimen-transfer' && Array.isArray(imp.specimens)) incoming = imp.specimens;
+          else if (imp?.format === 'kakelab-pro-backup' && Array.isArray(imp.specimens)) incoming = imp.specimens;
+          if (!incoming) throw new Error('format');
+          const before = getSpecimenLogs().length;
+          const merged = mergeUniqueLogs(getSpecimenLogs(), incoming);
+          setSpecimenLogs(merged);
+          alert(`復元完了！ ${merged.length - before} 件を追加しました（読み込み ${incoming.length} 件）。`);
+          loadLogs();
+          closeModal('dataModal');
+          e.target.value = '';
+        } catch (err) {
+          alert('このJSONは対応するバックアップ形式ではありません。');
+          e.target.value = '';
+        }
       };
       reader.readAsText(file);
     }
