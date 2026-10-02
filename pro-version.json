@@ -1,6 +1,6 @@
 {
-  "version": "1.4",
+  "version": "1.4.1",
   "released": "2026-10-02",
-  "message": "Free / AI鑑定局からのJSON引き継ぎと更新チェッカーに対応しました。",
+  "message": "ローカルHTML起動時の真っ黒画面対策と起動診断を追加しました。",
   "purchaseUrl": "https://note.com/kakelab/n/n713433ad5d2d"
 }
