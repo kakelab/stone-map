@@ -295,7 +295,7 @@
 
   <!-- 右上: バージョン表示・履歴・全画面 ＆ 設定メニュー -->
   <div class="top-right-bar">
-    <span class="ver-badge-top" style="background:rgba(255,255,255,0.9); color:#555; font-size:9.5px; font-weight:bold; padding:3px 6px; border-radius:5px; align-self:center;">Ver 1.3</span>
+    <span class="ver-badge-top" style="background:rgba(255,255,255,0.9); color:#555; font-size:9.5px; font-weight:bold; padding:3px 6px; border-radius:5px; align-self:center;">Ver 1.3.1</span>
     <button class="action-fab" onclick="openModal('changelogModal')">📜 履歴</button>
     <button class="action-fab" onclick="toggleFullScreen()">⛶ 全画面</button>
     <button class="action-fab" onclick="openModal('toolsModal')">⚙️ 設定</button>
@@ -409,6 +409,14 @@
       <h3>📜 石拾い地質マップ 更新履歴</h3>
       <div style="font-size:11.5px; line-height:1.6; color:#333; max-height:50vh; overflow-y:auto;">
         <div style="margin-bottom:10px;">
+          <b style="color:#6a1b9a;">🗺️ Ver 1.3.1（2026.10）</b>
+          <ul style="margin:4px 0 0; padding-left:18px;">
+            <li>採集地点は地図で選んだ位置を優先し、写真のGPSは希望したときだけ使用する方式に変更</li>
+            <li>写真のEXIF座標検証を強化し、撮影場所と採集場所の取り違えを防止</li>
+            <li>採集ログの保存失敗を通知。写真を軽量化し、保存成功後は💎マーカーを表示</li>
+          </ul>
+        </div>
+        <div style="margin-bottom:10px;">
           <b style="color:#6a1b9a;">🗺️ Ver 1.3（2026.10）</b>
           <ul style="margin:4px 0 0; padding-left:18px;">
             <li>Pro版をローカルHTMLで利用する場合に備え、共通標本ログを引き継ぎJSONとして保存できるよう改善</li>
@@ -455,13 +463,17 @@
       <label><b>メモ</b></label>
       <textarea id="logMemo" rows="2" placeholder="例: 川原の浅瀬、砂州の内側で発見。"></textarea>
 
+      <div id="logSaveLocation" style="background:#e8f5e9; color:#1b5e20; padding:7px; border-radius:6px; font-size:11px; line-height:1.5; margin-bottom:9px;">📍 地図で選んだ地点に保存します。</div>
       <label><b>写真（位置情報自動解析対応）</b></label>
       <input type="file" id="logPhoto" accept="image/*" onchange="checkExifLocation(this)">
-      <div id="exifAlert" style="font-size:10px; color:#2e7d32; display:none; margin-bottom:4px;">📍 写真からGPS位置情報を検出しました！</div>
-
+      <div id="exifAlert" style="font-size:10px; color:#2e7d32; display:none; margin-bottom:4px;"></div>
+      <div id="photoGpsChoice" style="display:none; padding:6px 0 8px; font-size:10px;">
+        <label style="display:flex; align-items:center; gap:6px;"><input id="usePhotoGpsForLog" type="checkbox" style="width:auto; margin:0;" onchange="renderLogLocationHint()">写真の撮影地点を採集地点に使う（同じ場所で撮影した場合のみ）</label>
+      </div>
+      <div style="font-size:10px; color:#666; margin:5px 0 8px;">※記録はブラウザ内に保存されます。必要に応じてJSONバックアップを保存してください。</div>
       <div class="btn-row">
         <button class="btn-act" style="background:#888;" onclick="closeModal('logModal')">キャンセル</button>
-        <button class="btn-act" style="background:#2e7d32;" onclick="saveCurrentLog()">保存する</button>
+        <button id="saveLogButton" class="btn-act" style="background:#2e7d32;" onclick="saveCurrentLog()">保存する</button>
       </div>
     </div>
   </div>
@@ -595,8 +607,10 @@
     }
     function setSpecimenLogs(logs) {
       const clean = mergeUniqueLogs(logs);
+      // Ensure the primary save completes before reporting success.
       localStorage.setItem(KAKELAB_LOG_KEY, JSON.stringify(clean));
       localStorage.setItem(KAKELAB_MIGRATION_KEY, '1');
+      return clean;
     }
     function makeSpecimenId() { return `kl-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`; }
     function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch])); }
@@ -768,26 +782,98 @@
     }
 
     // 5. EXIF解析＆写真一括
+    // Mark the chosen collection site by default. Photo GPS is an explicit opt-in.
     let detectedExifLatLng = null;
+
+    function validLogCoordinates(coords) {
+      if (!coords || coords.lat == null || coords.lng == null ||
+          (typeof coords.lat !== 'number' && typeof coords.lat !== 'string') ||
+          (typeof coords.lng !== 'number' && typeof coords.lng !== 'string')) return null;
+      if (String(coords.lat).trim() === '' || String(coords.lng).trim() === '') return null;
+      const lat = Number(coords.lat), lng = Number(coords.lng);
+      return Number.isFinite(lat) && Number.isFinite(lng) &&
+             Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : null;
+    }
+
+    function exifRationalNumber(v) {
+      if (v && typeof v === 'object' && 'numerator' in v && 'denominator' in v) {
+        const den = Number(v.denominator);
+        return den !== 0 ? Number(v.numerator) / den : NaN;
+      }
+      return Number(v);
+    }
+
+    function exifDmsToDecimal(parts, reference, axis) {
+      if (!Array.isArray(parts) || parts.length < 3) return NaN;
+      const [deg, min, sec] = parts.slice(0,3).map(exifRationalNumber);
+      const ref = String(reference || '').trim().toUpperCase();
+      if (![deg,min,sec].every(Number.isFinite) || deg < 0 ||
+          min < 0 || min >= 60 || sec < 0 || sec >= 60) return NaN;
+      if (axis === 'lat' && !['N','S'].includes(ref)) return NaN;
+      if (axis === 'lng' && !['E','W'].includes(ref)) return NaN;
+      const result = deg + min/60 + sec/3600;
+      const limit = axis === 'lat' ? 90 : 180;
+      return result <= limit ? result * (ref === 'S' || ref === 'W' ? -1 : 1) : NaN;
+    }
+
+    function readExifCoordinates(exifTarget) {
+      if (!window.EXIF) return null;
+      const latitude = exifDmsToDecimal(EXIF.getTag(exifTarget,'GPSLatitude'),
+        EXIF.getTag(exifTarget,'GPSLatitudeRef'), 'lat');
+      const longitude = exifDmsToDecimal(EXIF.getTag(exifTarget,'GPSLongitude'),
+        EXIF.getTag(exifTarget,'GPSLongitudeRef'), 'lng');
+      return validLogCoordinates({lat:latitude, lng:longitude});
+    }
+
+    function chooseLogCoordinates() {
+      const usePhoto = !!document.getElementById('usePhotoGpsForLog')?.checked;
+      return usePhoto ? validLogCoordinates(detectedExifLatLng) : validLogCoordinates(selectedLatLng);
+    }
+
+    function renderLogLocationHint() {
+      const label = document.getElementById('logSaveLocation');
+      const photoChoice = document.getElementById('photoGpsChoice');
+      if (photoChoice) photoChoice.style.display = validLogCoordinates(detectedExifLatLng) ? 'block' : 'none';
+      if (!label) return;
+      const usePhoto = !!document.getElementById('usePhotoGpsForLog')?.checked;
+      const coords = chooseLogCoordinates();
+      if (coords) {
+        label.style.background = usePhoto ? '#fff3e0' : '#e8f5e9';
+        label.style.color = usePhoto ? '#e65100' : '#1b5e20';
+        label.textContent = (usePhoto ? '📷 写真の撮影地点' : '📍 地図で選んだ採集地点') +
+          'に保存：' + coords.lat.toFixed(5) + ', ' + coords.lng.toFixed(5);
+      } else {
+        label.style.background = '#ffebee';
+        label.style.color = '#b71c1c';
+        label.textContent = usePhoto
+          ? '写真のGPSを正しく読み取れません。地図上の採集地点を選択してください。'
+          : '📍 地図で採集地点をタップしてから記録してください。';
+      }
+    }
+
     function checkExifLocation(input) {
       const file = input.files[0];
       detectedExifLatLng = null;
-      document.getElementById('exifAlert').style.display = 'none';
-      if (!file) return;
-
-      EXIF.getData(file, function() {
-        const lat = EXIF.getTag(this, 'GPSLatitude');
-        const latRef = EXIF.getTag(this, 'GPSLatitudeRef') || 'N';
-        const lng = EXIF.getTag(this, 'GPSLongitude');
-        const lngRef = EXIF.getTag(this, 'GPSLongitudeRef') || 'E';
-
-        if (lat && lng) {
-          const latDec = (lat[0] + lat[1]/60 + lat[2]/3600) * (latRef === 'N' ? 1 : -1);
-          const lngDec = (lng[0] + lng[1]/60 + lng[2]/3600) * (lngRef === 'E' ? 1 : -1);
-          detectedExifLatLng = { lat: latDec, lng: lngDec };
-          document.getElementById('exifAlert').style.display = 'block';
-        }
-      });
+      const check = document.getElementById('usePhotoGpsForLog');
+      if (check) check.checked = false;
+      const alertBox = document.getElementById('exifAlert');
+      alertBox.style.display = 'none';
+      renderLogLocationHint();
+      if (!file || !window.EXIF) return;
+      try {
+        EXIF.getData(file, function() {
+          if (document.getElementById('logPhoto').files[0] !== file) return;
+          detectedExifLatLng = readExifCoordinates(this);
+          if (detectedExifLatLng) {
+            alertBox.textContent = '📷 写真のGPSを検出しました。採集地点として使う場合だけ下のチェックをONにしてください。';
+            alertBox.style.display = 'block';
+          }
+          renderLogLocationHint();
+        });
+      } catch (error) {
+        console.warn('Free EXIF read skipped:', error);
+        renderLogLocationHint();
+      }
     }
 
     function batchImportPhotos(e) {
@@ -797,15 +883,12 @@
 
       Array.from(files).forEach(file => {
         EXIF.getData(file, function() {
-          const lat = EXIF.getTag(this, 'GPSLatitude');
-          const latRef = EXIF.getTag(this, 'GPSLatitudeRef') || 'N';
-          const lng = EXIF.getTag(this, 'GPSLongitude');
-          const lngRef = EXIF.getTag(this, 'GPSLongitudeRef') || 'E';
+          const gps = readExifCoordinates(this);
           const dateTag = EXIF.getTag(this, 'DateTimeOriginal') || '';
 
-          if (lat && lng) {
-            const latDec = (lat[0] + lat[1]/60 + lat[2]/3600) * (latRef === 'N' ? 1 : -1);
-            const lngDec = (lng[0] + lng[1]/60 + lng[2]/3600) * (lngRef === 'E' ? 1 : -1);
+          if (gps) {
+            const latDec = gps.lat;
+            const lngDec = gps.lng;
             const dateStr = dateTag ? dateTag.split(' ')[0].replace(/:/g, '/') : new Date().toLocaleDateString('ja-JP');
 
             const reader = new FileReader();
@@ -932,7 +1015,7 @@
       logLayer.clearLayers();
       const logs = getSpecimenLogs();
       logs.forEach((item, index) => {
-        L.marker([item.lat, item.lng], {
+        const logMarker = L.marker([item.lat, item.lng], {
           icon: L.divIcon({ html: '<div style="font-size:20px; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.4));">💎</div>', iconSize: [24, 24], iconAnchor: [12, 12] })
         }).addTo(logLayer).bindPopup(`
           <div style="min-width:180px; font-size:11.5px;">
@@ -945,6 +1028,7 @@
             </div>
           </div>
         `);
+        logMarker._kakelabSpecimenId = item.id;
       });
     }
 
@@ -972,44 +1056,121 @@
       `).openPopup();
     });
 
-    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+    function openModal(id) {
+      if (id === 'logModal') {
+        const check = document.getElementById('usePhotoGpsForLog');
+        if (check) check.checked = false;
+        renderLogLocationHint();
+      }
+      document.getElementById(id).style.display = 'flex';
+    }
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
+    let logSaveBusy = false;
+    function setLogSaveBusy(busy) {
+      logSaveBusy = busy;
+      const button = document.getElementById('saveLogButton');
+      if (button) {
+        button.disabled = busy;
+        button.textContent = busy ? '保存中…' : '保存する';
+      }
+    }
+
+    function makeCompactLogPhoto(image) {
+      const canvas = document.createElement('canvas');
+      const maxDim = 360;
+      const ratio = Math.min(1, maxDim / Math.max(image.width, image.height));
+      canvas.width = Math.max(1, Math.round(image.width * ratio));
+      canvas.height = Math.max(1, Math.round(image.height * ratio));
+      canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+      const qualities = [0.65, 0.5, 0.35];
+      let result = '';
+      for (const quality of qualities) {
+        result = canvas.toDataURL('image/jpeg', quality);
+        if (result.length <= 65000) break;
+      }
+      return result;
+    }
+
     function saveCurrentLog() {
-      const name = document.getElementById('logStoneName').value || '採取した石';
-      const memo = document.getElementById('logMemo').value || '';
+      if (logSaveBusy) return;
+      const name = document.getElementById('logStoneName').value.trim() || '採取した石';
+      const memo = document.getElementById('logMemo').value.trim();
       const file = document.getElementById('logPhoto').files[0];
       const now = new Date().toLocaleDateString('ja-JP');
-      const center = map.getCenter();
-      const targetCoords = detectedExifLatLng || selectedLatLng || { lat: center.lat, lng: center.lng };
-
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const img = new Image();
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const maxDim = 400;
-            let w = img.width, h = img.height;
-            if (w > h && w > maxDim) { h = (h * maxDim)/w; w = maxDim; }
-            else if (h > maxDim) { w = (w * maxDim)/h; h = maxDim; }
-            canvas.width = w; canvas.height = h;
-            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-            saveToStorage(targetCoords, name, memo, now, canvas.toDataURL('image/jpeg', 0.7));
-          };
-          img.src = e.target.result;
+      const targetCoords = chooseLogCoordinates();
+      if (!targetCoords) {
+        alert('記録する採集地点を確認できません。地図上で地点を選んでから、もう一度お試しください。');
+        renderLogLocationHint();
+        return;
+      }
+      setLogSaveBusy(true);
+      const complete = (photo) => {
+        try { saveToStorage(targetCoords, name, memo, now, photo); }
+        finally { setLogSaveBusy(false); }
+      };
+      if (!file) { complete(null); return; }
+      const reader = new FileReader();
+      reader.onerror = () => {
+        setLogSaveBusy(false);
+        alert('写真の読み込みに失敗しました。別の写真でお試しください。');
+      };
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onerror = () => {
+          setLogSaveBusy(false);
+          alert('この写真を開けませんでした。形式を確認してください。');
         };
-        reader.readAsDataURL(file);
-      } else { saveToStorage(targetCoords, name, memo, now, null); }
+        img.onload = () => {
+          try { complete(makeCompactLogPhoto(img)); }
+          catch (error) {
+            setLogSaveBusy(false);
+            alert('写真の処理に失敗しました。別の写真でお試しください。');
+          }
+        };
+        img.src = event.target.result;
+      };
+      try { reader.readAsDataURL(file); }
+      catch (error) {
+        setLogSaveBusy(false);
+        alert('写真の読み込みを開始できませんでした。');
+      }
     }
 
     function saveToStorage(coords, name, memo, date, photo) {
-      const logs = getSpecimenLogs();
-      logs.push({ id: makeSpecimenId(), source:'free-map', lat: coords.lat, lng: coords.lng, name, memo, date, photo, updatedAt:new Date().toISOString() });
-      setSpecimenLogs(logs);
-      closeModal('logModal');
-      if (tempMarker) map.removeLayer(tempMarker);
-      loadLogs();
+      const record = { id:makeSpecimenId(), source:'free-map', lat:Number(coords.lat), lng:Number(coords.lng), name, memo, date, photo, updatedAt:new Date().toISOString() };
+      try {
+        const existing = getSpecimenLogs();
+        const saved = setSpecimenLogs([...existing, record]);
+        if (!saved.some(item => item.id === record.id)) {
+          alert('同じ内容の標本ログがすでに登録されています。保存済みの記録を確認してください。');
+          return false;
+        }
+        closeModal('logModal');
+        if (tempMarker) { map.removeLayer(tempMarker); tempMarker = null; }
+        loadLogs();
+        const marker = logLayer.getLayers().find(layer => layer._kakelabSpecimenId === record.id);
+        if (marker) marker.openPopup();
+        document.getElementById('logStoneName').value = '';
+        document.getElementById('logMemo').value = '';
+        document.getElementById('logPhoto').value = '';
+        document.getElementById('exifAlert').style.display = 'none';
+        const choice = document.getElementById('photoGpsChoice');
+        if (choice) choice.style.display = 'none';
+        detectedExifLatLng = null;
+        alert('💎 採集ログを保存しました。地図上にマーカーを表示しています。');
+        return true;
+      } catch (error) {
+        console.error('Free specimen save failed:', error);
+        const quota = error?.name === 'QuotaExceededError' || error?.name === 'NS_ERROR_DOM_QUOTA_REACHED';
+        if (photo && quota && confirm('写真を含む標本ログの保存容量が不足しています。写真なしで記録だけ保存しますか？\\n（写真は端末に残ります）')) {
+          return saveToStorage(coords, name, memo, date, null);
+        }
+        alert(quota
+          ? '⚠️ 保存容量が不足しています。先に「ログ管理・写真」からJSONバックアップを保存し、データを整理してください。ブラウザのサイトデータを消去すると記録が失われます。'
+          : '⚠️ 採集ログを保存できませんでした。端末の保存制限やブラウザ設定をご確認ください。');
+        return false;
+      }
     }
 
     window.deleteLog = function(i) {
