@@ -1,6 +1,6 @@
 {
-  "version": "1.4.1",
-  "released": "2026-10-02",
-  "message": "ローカルHTML起動時の真っ黒画面対策と起動診断を追加しました。",
+  "version": "1.4.2",
+  "released": "2026-10-09",
+  "message": "予想範囲の円内で採集ピンが立てられない問題とProからAI鑑定局へのリンクを修正しました。",
   "purchaseUrl": "https://note.com/kakelab/n/n713433ad5d2d"
 }
