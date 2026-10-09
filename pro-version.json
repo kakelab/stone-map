@@ -1,6 +1,6 @@
 {
-  "version": "1.4.3",
+  "version": "1.4.4",
   "released": "2026-10-09",
-  "message": "Proの採集ログ保存・写真付き保存のエラー表示・保存直後のマーカー表示を改善しました。",
+  "message": "写真のGPSより地図で選んだ採集地点を優先。撮影地点との取り違えとEXIF座標エラーを修正しました。",
   "purchaseUrl": "https://note.com/kakelab/n/n713433ad5d2d"
 }
