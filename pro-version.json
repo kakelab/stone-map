@@ -1,6 +1,6 @@
 {
-  "version": "1.4.2",
+  "version": "1.4.3",
   "released": "2026-10-09",
-  "message": "予想範囲の円内で採集ピンが立てられない問題とProからAI鑑定局へのリンクを修正しました。",
+  "message": "Proの採集ログ保存・写真付き保存のエラー表示・保存直後のマーカー表示を改善しました。",
   "purchaseUrl": "https://note.com/kakelab/n/n713433ad5d2d"
 }
